@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin";
+import { getRequestUser } from "@/lib/admin";
 import { encryptSecret, slugify } from "@/lib/crypto";
 import { deleteScript, getScript, saveScript } from "@/lib/store";
+import { ScriptProject, UserAccount } from "@/lib/types";
 
 export const runtime = "nodejs";
 
+function canManageScript(user: UserAccount, script: ScriptProject) {
+  return user.role === "owner" || user.role === "admin" || script.ownerId === user.id;
+}
+
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin(request))) {
+  const user = await getRequestUser(request);
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -14,6 +20,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   const record = await getScript(id);
   if (!record) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (!canManageScript(user, record)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -35,11 +44,19 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 }
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin(request))) {
+  const user = await getRequestUser(request);
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await context.params;
+  const record = await getScript(id);
+  if (!record) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (!canManageScript(user, record)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   await deleteScript(id);
   return NextResponse.json({ ok: true });
 }

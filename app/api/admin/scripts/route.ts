@@ -1,22 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin";
+import { getRequestUser } from "@/lib/admin";
 import { createId, encryptSecret, slugify } from "@/lib/crypto";
 import { listScripts, saveScript } from "@/lib/store";
-import { ScriptProject } from "@/lib/types";
+import { ScriptProject, UserAccount } from "@/lib/types";
 
 export const runtime = "nodejs";
 
+function canSeeScript(user: UserAccount, script: ScriptProject) {
+  return user.role === "owner" || user.role === "admin" || script.ownerId === user.id;
+}
+
 export async function GET(request: NextRequest) {
-  if (!(await requireAdmin(request))) {
+  const user = await getRequestUser(request);
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.json({ scripts: await listScripts() });
+  const scripts = (await listScripts()).filter((script) => canSeeScript(user, script));
+  return NextResponse.json({ scripts });
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await requireAdmin(request))) {
+  const user = await getRequestUser(request);
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (user.role === "customer") {
+    const ownedScripts = (await listScripts()).filter((script) => script.ownerId === user.id);
+    if (ownedScripts.length >= 3) {
+      return NextResponse.json({ error: "Free customer accounts can protect up to 3 scripts." }, { status: 403 });
+    }
   }
 
   const body = await request.json().catch(() => ({}));
@@ -31,6 +45,7 @@ export async function POST(request: NextRequest) {
 
   const record: ScriptProject = {
     id: createId(),
+    ownerId: user.id,
     name,
     slug,
     description: String(body.description || ""),

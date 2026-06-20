@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Dispatch, FormEvent, SetStateAction, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -8,6 +8,7 @@ import {
   BarChart3,
   Code2,
   Copy,
+  Crown,
   Eye,
   EyeOff,
   FileCode2,
@@ -27,7 +28,14 @@ import {
 import { Badge, EmptyState, Field, MiniBarChart, Panel, StatCard, Tabs, dashboardTheme } from "@/components/dashboard/ui";
 import { InteractiveShell, Reveal } from "@/components/motion";
 
-type AppUser = { id: string; email: string; name: string; role: string };
+type AppUser = {
+  id: string;
+  email: string;
+  name: string;
+  role: "owner" | "admin" | "customer";
+  plan?: "free" | "pro" | "enterprise";
+  subscriptionStatus?: "free" | "trialing" | "active" | "past_due" | "canceled";
+};
 type ManagedUser = {
   id: string;
   email: string;
@@ -41,10 +49,11 @@ type ManagedUser = {
   updatedAt: string;
   lastLoginAt: string | null;
 };
-type ScriptProject = { id: string; name: string; slug: string; active: boolean; requireDeviceId: boolean; sourceBytes?: number; protectedAt?: string | null };
+type ScriptProject = { id: string; ownerId?: string | null; name: string; slug: string; active: boolean; requireDeviceId: boolean; sourceBytes?: number; protectedAt?: string | null };
 type Device = { hash: string; userId: string; username: string | null; status: "active" | "blocked" };
 type License = {
   id: string;
+  ownerId?: string | null;
   label: string;
   active: boolean;
   hasStoredKey?: boolean;
@@ -109,12 +118,12 @@ const tabs = [
   { id: "overview", label: "Overview", icon: BarChart3 },
   { id: "scripts", label: "Scripts", icon: FileCode2 },
   { id: "keys", label: "Keys", icon: KeyRound },
-  { id: "auto", label: "Auto Keys", icon: Wand2 },
-  { id: "deployment", label: "Ad Systems", icon: Megaphone },
+  { id: "auto", label: "Auto Keys", icon: Wand2, premium: true },
+  { id: "deployment", label: "Ad Systems", icon: Megaphone, premium: true },
   { id: "logs", label: "Logs", icon: Activity },
   { id: "settings", label: "Settings", icon: Settings },
   { id: "owner", label: "Owner", icon: Users, ownerOnly: true },
-  { id: "api", label: "Advanced", icon: Code2 },
+  { id: "api", label: "Advanced", icon: Code2, premium: true },
 ];
 
 const tabMeta: Record<string, { eyebrow: string; title: string; description: string }> = {
@@ -237,28 +246,29 @@ export default function DashboardPage() {
 
   async function loadData() {
     setError("");
+    const canUsePremium = user?.role === "owner" || user?.role === "admin" || user?.plan === "pro" || user?.plan === "enterprise";
     const [scriptsResponse, licensesResponse, logsResponse, claimsResponse, autoResponse, usersResponse] = await Promise.all([
       fetch("/api/admin/scripts", { cache: "no-store" }),
       fetch("/api/admin/licenses", { cache: "no-store" }),
       fetch("/api/admin/logs", { cache: "no-store" }),
-      fetch("/api/admin/claims", { cache: "no-store" }),
-      fetch("/api/admin/auto-keys", { cache: "no-store" }),
+      canUsePremium ? fetch("/api/admin/claims", { cache: "no-store" }) : Promise.resolve(null),
+      canUsePremium ? fetch("/api/admin/auto-keys", { cache: "no-store" }) : Promise.resolve(null),
       user?.role === "owner" ? fetch("/api/admin/users", { cache: "no-store" }) : Promise.resolve(null),
     ]);
 
-    if (!scriptsResponse.ok || !licensesResponse.ok || !logsResponse.ok || !claimsResponse.ok || !autoResponse.ok) {
-      setError("Your account does not have admin access or the backend environment is not configured.");
+    if (!scriptsResponse.ok || !licensesResponse.ok || !logsResponse.ok || (claimsResponse && !claimsResponse.ok) || (autoResponse && !autoResponse.ok)) {
+      setError("Your account could not load dashboard data or the backend environment is not configured.");
       return;
     }
 
     setScripts((await scriptsResponse.json()).scripts || []);
     setLicenses((await licensesResponse.json()).licenses || []);
     setLogs((await logsResponse.json()).logs || []);
-    const claimsPayload = await claimsResponse.json();
+    const claimsPayload = claimsResponse ? await claimsResponse.json() : {};
     setCampaigns(claimsPayload.campaigns || []);
     setTickets(claimsPayload.tickets || []);
     setRedemptions(claimsPayload.redemptions || []);
-    setAutoRules((await autoResponse.json()).rules || []);
+    setAutoRules(autoResponse ? (await autoResponse.json()).rules || [] : []);
     if (usersResponse?.ok) setManagedUsers((await usersResponse.json()).users || []);
   }
 
@@ -454,12 +464,12 @@ export default function DashboardPage() {
 
   if (!user) return <main className="grid min-h-screen place-items-center text-slate-300">Loading AegisLua...</main>;
 
-  if (user.role === "customer") {
-    return <CustomerPortal user={user} logout={logout} deleteOwnAccount={deleteOwnAccount} />;
-  }
-
-  const visibleTabs = tabs.filter((tab) => !tab.ownerOnly || user.role === "owner");
+  const canUsePremium = user.role === "owner" || user.role === "admin" || user.plan === "pro" || user.plan === "enterprise";
+  const visibleTabs = tabs
+    .filter((tab) => !tab.ownerOnly || user.role === "owner")
+    .map((tab) => ({ ...tab, locked: Boolean(tab.premium && !canUsePremium) }));
   const currentTab = tabMeta[activeTab] || tabMeta.overview;
+  const activeTabIsLocked = Boolean(tabs.find((tab) => tab.id === activeTab)?.premium && !canUsePremium);
 
   return (
     <InteractiveShell className={`${dashboardTheme.page} xl:grid xl:grid-cols-[280px_1fr]`}>
@@ -505,14 +515,15 @@ export default function DashboardPage() {
         {notice ? <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">{notice}</div> : null}
 
         <Reveal className="tab-motion min-w-0" key={activeTab}>
-          {activeTab === "overview" ? (
+          {activeTabIsLocked ? <UpgradeLocked tabTitle={currentTab.title} /> : null}
+          {!activeTabIsLocked && activeTab === "overview" ? (
             <Overview
               stats={{ uniquePlayers, keysGenerated, completedClaims, estimatedRevenue, boundDevices }}
               charts={{ executionsChart, claimsChart, keyChart, revenueChart }}
             />
           ) : null}
 
-          {activeTab === "scripts" ? (
+          {!activeTabIsLocked && activeTab === "scripts" ? (
             <ScriptManagement
             scripts={scripts}
             logs={logs}
@@ -530,7 +541,7 @@ export default function DashboardPage() {
           />
           ) : null}
 
-          {activeTab === "keys" ? (
+          {!activeTabIsLocked && activeTab === "keys" ? (
             <KeyManagement
               scripts={scripts}
               licenses={licenses}
@@ -557,7 +568,7 @@ export default function DashboardPage() {
           />
           ) : null}
 
-          {activeTab === "auto" ? (
+          {!activeTabIsLocked && activeTab === "auto" ? (
           <AutoKeyManagement
               scripts={scripts}
               rules={autoRules}
@@ -585,7 +596,7 @@ export default function DashboardPage() {
             />
           ) : null}
 
-          {activeTab === "deployment" ? (
+          {!activeTabIsLocked && activeTab === "deployment" ? (
             <AdSystems
               scripts={scripts}
               campaigns={campaigns}
@@ -623,20 +634,25 @@ export default function DashboardPage() {
             />
           ) : null}
 
-          {activeTab === "logs" ? <Logs logs={logs} redemptions={redemptions} licenses={licenses} /> : null}
-          {activeTab === "settings" ? <SettingsPanel user={user} logout={logout} deleteOwnAccount={deleteOwnAccount} /> : null}
-          {activeTab === "owner" && user.role === "owner" ? (
+          {!activeTabIsLocked && activeTab === "logs" ? <Logs logs={logs} redemptions={redemptions} licenses={licenses} /> : null}
+          {!activeTabIsLocked && activeTab === "settings" ? <SettingsPanel user={user} logout={logout} deleteOwnAccount={deleteOwnAccount} /> : null}
+          {!activeTabIsLocked && activeTab === "owner" && user.role === "owner" ? (
             <UserManagement
               users={managedUsers}
               scripts={scripts}
               licenses={licenses}
               currentUserId={user.id}
+              copy={copy}
+              revealLicenseKey={async (license) => {
+                const payload = await patch(`/api/admin/licenses/${license.id}`, { action: "reveal" }, "Key revealed.");
+                return typeof payload?.key === "string" ? payload.key : null;
+              }}
               updateUser={(target, body) => patch(`/api/admin/users/${target.id}`, body, "User updated.")}
               deleteUser={(target) => remove(`/api/admin/users/${target.id}`, "User deleted.")}
               scriptNames={scriptNames}
             />
           ) : null}
-          {activeTab === "api" ? <ApiDocs scripts={scripts} /> : null}
+          {!activeTabIsLocked && activeTab === "api" ? <ApiDocs scripts={scripts} /> : null}
         </Reveal>
         </main>
       </section>
@@ -775,6 +791,25 @@ function MiniMetric({ label, value }: { label: string; value: number }) {
       <span className="block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-600">{label}</span>
       <strong className="mt-1 block text-lg text-white">{value}</strong>
     </div>
+  );
+}
+
+function UpgradeLocked({ tabTitle }: { tabTitle: string }) {
+  return (
+    <section className="glass-card mx-auto grid max-w-3xl place-items-center rounded-3xl p-8 text-center sm:p-10">
+      <span className="grid size-14 place-items-center rounded-2xl border border-amber-300/30 bg-amber-300/10 text-amber-200">
+        <Crown size={26} />
+      </span>
+      <p className="mt-5 font-mono text-xs font-black uppercase tracking-[0.22em] text-amber-200">Premium feature</p>
+      <h2 className="mt-2 text-3xl font-black text-white">{tabTitle}</h2>
+      <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">
+        This area is visible so you can see what AegisLua can do, but it requires a Pro or Enterprise plan before the controls unlock.
+      </p>
+      <Link className={`${dashboardTheme.button} mt-6 inline-flex items-center justify-center gap-2`} href="/pricing">
+        <Crown size={16} />
+        View pricing
+      </Link>
+    </section>
   );
 }
 
@@ -1462,6 +1497,8 @@ function UserManagement(props: {
   scripts: ScriptProject[];
   licenses: License[];
   currentUserId: string;
+  copy: (value: string) => void;
+  revealLicenseKey: (license: License) => Promise<string | null>;
   updateUser: (
     target: ManagedUser,
     body: Partial<Pick<ManagedUser, "role" | "plan" | "subscriptionStatus" | "subscriptionRenewsAt" | "active">>,
@@ -1472,6 +1509,15 @@ function UserManagement(props: {
   const owners = props.users.filter((user) => user.role === "owner").length;
   const paidUsers = props.users.filter((user) => user.plan === "pro" || user.plan === "enterprise").length;
   const activeUsers = props.users.filter((user) => user.active).length;
+  const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
+  const [detailMode, setDetailMode] = useState<"profile" | "scripts" | "keys">("profile");
+  const [detailQuery, setDetailQuery] = useState("");
+  const [visibleKeys, setVisibleKeys] = useState<Record<string, string>>({});
+
+  async function revealOwnerKey(license: License) {
+    const key = await props.revealLicenseKey(license);
+    if (key) setVisibleKeys((current) => ({ ...current, [license.id]: key }));
+  }
 
   return (
     <div className="grid gap-5">
@@ -1554,6 +1600,17 @@ function UserManagement(props: {
               </div>
               <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
                 <button
+                  className={`${dashboardTheme.ghostButton} px-3 py-2 text-xs`}
+                  onClick={() => {
+                    setSelectedUser(managedUser);
+                    setDetailMode("profile");
+                    setDetailQuery("");
+                  }}
+                  type="button"
+                >
+                  Details
+                </button>
+                <button
                   className={`${managedUser.active ? dashboardTheme.dangerButton : dashboardTheme.ghostButton} px-3 py-2 text-xs`}
                   disabled={managedUser.id === props.currentUserId}
                   onClick={() => props.updateUser(managedUser, { active: !managedUser.active })}
@@ -1574,6 +1631,73 @@ function UserManagement(props: {
           ))}
         </div>
       </Panel>
+      <Modal open={Boolean(selectedUser)} title={selectedUser ? `${selectedUser.name} Details` : "User Details"} onClose={() => setSelectedUser(null)}>
+        {selectedUser ? (
+          <div className="grid gap-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <button
+                className={detailMode === "profile" ? dashboardTheme.button : dashboardTheme.ghostButton}
+                onClick={() => setDetailMode("profile")}
+                type="button"
+              >
+                Profile
+              </button>
+              <button
+                className={detailMode === "scripts" ? dashboardTheme.button : dashboardTheme.ghostButton}
+                onClick={() => setDetailMode("scripts")}
+                type="button"
+              >
+                Scripts
+              </button>
+              <button
+                className={detailMode === "keys" ? dashboardTheme.button : dashboardTheme.ghostButton}
+                onClick={() => setDetailMode("keys")}
+                type="button"
+              >
+                Keys
+              </button>
+            </div>
+            {detailMode === "profile" ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <InfoRow label="Name" value={selectedUser.name} />
+                <InfoRow label="Email" value={selectedUser.email} />
+                <InfoRow label="Role" value={selectedUser.role} />
+                <InfoRow label="Plan" value={selectedUser.plan} />
+                <InfoRow label="Subscription" value={selectedUser.subscriptionStatus} />
+                <InfoRow label="Last login" value={selectedUser.lastLoginAt ? new Date(selectedUser.lastLoginAt).toLocaleString() : "Never"} />
+              </div>
+            ) : null}
+            {detailMode !== "profile" ? (
+              <label className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
+                <input
+                  className={`${dashboardTheme.input} py-2.5 pl-10`}
+                  placeholder={`Search ${detailMode}`}
+                  value={detailQuery}
+                  onChange={(event) => setDetailQuery(event.target.value)}
+                />
+              </label>
+            ) : null}
+            {detailMode === "scripts" ? (
+              <OwnerUserScripts
+                query={detailQuery}
+                scripts={props.scripts.filter((script) => selectedUser.role === "owner" ? true : script.ownerId === selectedUser.id)}
+              />
+            ) : null}
+            {detailMode === "keys" ? (
+              <OwnerUserKeys
+                copy={props.copy}
+                licenses={props.licenses.filter((license) => selectedUser.role === "owner" ? true : license.ownerId === selectedUser.id)}
+                query={detailQuery}
+                revealKey={revealOwnerKey}
+                scriptNames={props.scriptNames}
+                visibleKeys={visibleKeys}
+                setVisibleKeys={setVisibleKeys}
+              />
+            ) : null}
+          </div>
+        ) : null}
+      </Modal>
       <section className="grid gap-5 xl:grid-cols-2">
         <Panel title="All Scripts" meta={`${props.scripts.length} total`}>
           <div className="grid gap-2">
@@ -1604,6 +1728,91 @@ function UserManagement(props: {
           </div>
         </Panel>
       </section>
+    </div>
+  );
+}
+
+function OwnerUserScripts({ scripts, query }: { scripts: ScriptProject[]; query: string }) {
+  const search = query.trim().toLowerCase();
+  const filtered = scripts.filter((script) => !search || script.name.toLowerCase().includes(search) || script.slug.toLowerCase().includes(search));
+  if (filtered.length === 0) return <EmptyState text="No scripts found for this user." />;
+  return (
+    <div className="max-h-[46vh] overflow-y-auto rounded-2xl border border-white/10">
+      {filtered.map((script) => (
+        <div className="grid gap-2 border-b border-white/5 p-3 text-sm last:border-b-0 sm:grid-cols-[1fr_auto]" key={script.id}>
+          <div className="min-w-0">
+            <strong className="block truncate text-white">{script.name}</strong>
+            <code className="mt-1 block truncate text-xs text-rose-300">{script.slug}</code>
+          </div>
+          <Badge tone={script.active ? "good" : "bad"}>{script.active ? "Active" : "Disabled"}</Badge>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OwnerUserKeys({
+  licenses,
+  query,
+  visibleKeys,
+  setVisibleKeys,
+  revealKey,
+  copy,
+  scriptNames,
+}: {
+  licenses: License[];
+  query: string;
+  visibleKeys: Record<string, string>;
+  setVisibleKeys: Dispatch<SetStateAction<Record<string, string>>>;
+  revealKey: (license: License) => Promise<void>;
+  copy: (value: string) => void;
+  scriptNames: (ids: string[]) => string;
+}) {
+  const search = query.trim().toLowerCase();
+  const filtered = licenses.filter((license) => {
+    const scripts = scriptNames(license.scriptIds).toLowerCase();
+    return !search || license.label.toLowerCase().includes(search) || scripts.includes(search) || visibleKeys[license.id]?.toLowerCase().includes(search);
+  });
+  if (filtered.length === 0) return <EmptyState text="No keys found for this user." />;
+  return (
+    <div className="max-h-[46vh] overflow-y-auto rounded-2xl border border-white/10">
+      {filtered.map((license) => {
+        const visibleKey = visibleKeys[license.id];
+        return (
+          <div className="grid gap-3 border-b border-white/5 p-3 text-sm last:border-b-0 lg:grid-cols-[1fr_1.25fr_auto]" key={license.id}>
+            <div className="min-w-0">
+              <strong className="block truncate text-white">{license.label}</strong>
+              <span className="mt-1 block truncate text-xs text-slate-500">{scriptNames(license.scriptIds) || "No scripts"}</span>
+            </div>
+            <code className="truncate rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs text-rose-100">
+              {visibleKey || (license.hasStoredKey ? "AEGIS-****************" : "Legacy hash only")}
+            </code>
+            <div className="flex flex-wrap justify-end gap-2">
+              {visibleKey ? <button className={`${dashboardTheme.ghostButton} px-3 py-2 text-xs`} onClick={() => copy(visibleKey)} type="button">Copy</button> : null}
+              <button
+                className={`${dashboardTheme.ghostButton} flex items-center gap-2 px-3 py-2 text-xs`}
+                disabled={!license.hasStoredKey}
+                onClick={() => {
+                  if (visibleKey) {
+                    setVisibleKeys((current) => {
+                      const next = { ...current };
+                      delete next[license.id];
+                      return next;
+                    });
+                  } else {
+                    revealKey(license);
+                  }
+                }}
+                type="button"
+              >
+                {visibleKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                {visibleKey ? "Hide" : "Show"}
+              </button>
+              <Badge tone={license.active ? "good" : "bad"}>{license.active ? "Active" : "Revoked"}</Badge>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1741,8 +1950,8 @@ function CopyBox({ label, value, copy, compact = false }: { label: string; value
 function Modal({ open, title, children, onClose }: { open: boolean; title: string; children: React.ReactNode; onClose: () => void }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xl">
-      <section className="modal-pop max-h-[86vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[#0b0b10]/95 p-4 shadow-2xl shadow-black/60 sm:p-5">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/75 p-4 py-8 backdrop-blur-xl sm:items-center">
+      <section className="modal-pop max-h-[calc(100vh-4rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[#0b0b10]/95 p-4 shadow-2xl shadow-black/60 sm:p-5">
         <div className="mb-4 flex items-center justify-between gap-4 border-b border-white/10 pb-4">
           <h2 className="text-xl font-black text-white">{title}</h2>
           <button className={dashboardTheme.ghostButton} onClick={onClose} type="button">Close</button>

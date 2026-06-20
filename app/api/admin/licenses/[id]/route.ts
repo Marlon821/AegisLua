@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin";
+import { getRequestUser } from "@/lib/admin";
 import { decryptSecret } from "@/lib/crypto";
-import { deleteLicense, getLicense, saveLicense } from "@/lib/store";
+import { deleteLicense, getLicense, listScripts, saveLicense } from "@/lib/store";
+import { LicenseRecord, ScriptProject, UserAccount } from "@/lib/types";
 
 export const runtime = "nodejs";
 
+function canManageLicense(user: UserAccount, record: LicenseRecord) {
+  return user.role === "owner" || user.role === "admin" || record.ownerId === user.id;
+}
+
+function canUseScript(user: UserAccount, script: ScriptProject) {
+  return user.role === "owner" || user.role === "admin" || script.ownerId === user.id;
+}
+
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin(request))) {
+  const user = await getRequestUser(request);
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -14,6 +24,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   const record = await getLicense(id);
   if (!record) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (!canManageLicense(user, record)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -30,7 +43,15 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   if (typeof body.active === "boolean") record.active = body.active;
   if (typeof body.label === "string") record.label = body.label;
-  if (Array.isArray(body.scriptIds)) record.scriptIds = body.scriptIds.map(String).filter(Boolean);
+  if (Array.isArray(body.scriptIds)) {
+    const scriptIds: string[] = body.scriptIds.map(String).filter(Boolean);
+    const scripts = await listScripts();
+    const allowedScriptIds = new Set(scripts.filter((script) => canUseScript(user, script)).map((script) => script.id));
+    if (scriptIds.some((scriptId) => !allowedScriptIds.has(scriptId))) {
+      return NextResponse.json({ error: "Choose scripts from your own workspace." }, { status: 403 });
+    }
+    record.scriptIds = scriptIds;
+  }
   if (typeof body.maxUsers === "number") record.maxUsers = Math.max(1, Math.floor(body.maxUsers));
   if (typeof body.maxDevices === "number") record.maxDevices = Math.max(1, Math.floor(body.maxDevices));
   if (Array.isArray(body.devices)) record.devices = body.devices;
@@ -42,11 +63,19 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 }
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin(request))) {
+  const user = await getRequestUser(request);
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await context.params;
+  const record = await getLicense(id);
+  if (!record) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (!canManageLicense(user, record)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   await deleteLicense(id);
   return NextResponse.json({ ok: true });
 }

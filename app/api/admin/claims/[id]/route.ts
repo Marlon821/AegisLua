@@ -1,14 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin";
+import { getRequestUser } from "@/lib/admin";
 import { createTicketForCampaign, publicClaimUrl } from "@/lib/claims";
 import { decryptSecret, encryptSecret, hashKey } from "@/lib/crypto";
 import { createLootLabsLink } from "@/lib/lootlabs";
-import { deleteClaimCampaign, findLicenseByHash, getClaimCampaign, saveClaimCampaign, saveClaimTicket } from "@/lib/store";
+import { deleteClaimCampaign, findLicenseByHash, getClaimCampaign, listScripts, saveClaimCampaign, saveClaimTicket } from "@/lib/store";
+import { ClaimCampaign, LicenseRecord, ScriptProject, UserAccount } from "@/lib/types";
 
 export const runtime = "nodejs";
 
+function canUsePremium(user: UserAccount) {
+  return user.role === "owner" || user.role === "admin" || user.plan === "pro" || user.plan === "enterprise";
+}
+
+function canManageCampaign(user: UserAccount, campaign: ClaimCampaign) {
+  return user.role === "owner" || user.role === "admin" || campaign.ownerId === user.id;
+}
+
+function canUseScript(user: UserAccount, script: ScriptProject) {
+  return user.role === "owner" || user.role === "admin" || script.ownerId === user.id;
+}
+
+function canUseLicense(user: UserAccount, license: LicenseRecord | null) {
+  return Boolean(license && (user.role === "owner" || user.role === "admin" || license.ownerId === user.id));
+}
+
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin(request))) {
+  const user = await getRequestUser(request);
+  if (!user || !canUsePremium(user)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -16,6 +34,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   const campaign = await getClaimCampaign(id);
   if (!campaign) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (!canManageCampaign(user, campaign)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -44,7 +65,14 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   if (typeof body.name === "string") campaign.name = body.name;
   if (typeof body.active === "boolean") campaign.active = body.active;
-  if (Array.isArray(body.scriptIds)) campaign.scriptIds = body.scriptIds.map(String).filter(Boolean);
+  if (Array.isArray(body.scriptIds)) {
+    const scriptIds: string[] = body.scriptIds.map(String).filter(Boolean);
+    const allowedScriptIds = new Set((await listScripts()).filter((script) => canUseScript(user, script)).map((script) => script.id));
+    if (scriptIds.some((scriptId) => !allowedScriptIds.has(scriptId))) {
+      return NextResponse.json({ error: "Choose scripts from your own workspace." }, { status: 403 });
+    }
+    campaign.scriptIds = scriptIds;
+  }
   if (typeof body.labelPrefix === "string") campaign.labelPrefix = body.labelPrefix;
   if (typeof body.apiKey === "string" && body.apiKey.trim()) {
     campaign.apiKeyHash = hashKey(body.apiKey);
@@ -53,7 +81,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   if (typeof body.deliveryKey === "string" && body.deliveryKey.trim()) {
     const deliveryKeyHash = hashKey(body.deliveryKey);
     const deliveryLicense = await findLicenseByHash(deliveryKeyHash);
-    if (!deliveryLicense) {
+    if (!deliveryLicense || !canUseLicense(user, deliveryLicense)) {
       return NextResponse.json({ error: "That delivery key does not exist in Key Inventory." }, { status: 400 });
     }
     campaign.deliveryKeyHash = deliveryKeyHash;
@@ -78,11 +106,15 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 }
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin(request))) {
+  const user = await getRequestUser(request);
+  if (!user || !canUsePremium(user)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await context.params;
+  const campaign = await getClaimCampaign(id);
+  if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!canManageCampaign(user, campaign)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   await deleteClaimCampaign(id);
   return NextResponse.json({ ok: true });
 }

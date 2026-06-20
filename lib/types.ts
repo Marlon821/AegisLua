@@ -1,5 +1,6 @@
 export type ScriptProject = {
   id: string;
+  ownerId?: string | null;
   name: string;
   slug: string;
   description: string;
@@ -24,6 +25,7 @@ export type BoundDevice = {
 
 export type LicenseRecord = {
   id: string;
+  ownerId?: string | null;
   keyHash: string;
   keyEncrypted?: string | null;
   label: string;
@@ -57,6 +59,7 @@ export type ClaimProvider = "lootlabs";
 
 export type ClaimCampaign = {
   id: string;
+  ownerId?: string | null;
   name: string;
   provider: ClaimProvider;
   active: boolean;
@@ -111,6 +114,7 @@ export type AutoKeyIntervalUnit = "days" | "weeks" | "months";
 
 export type AutoKeyRule = {
   id: string;
+  ownerId?: string | null;
   name: string;
   active: boolean;
   scriptIds: string[];

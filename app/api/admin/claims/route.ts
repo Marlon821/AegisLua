@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin";
+import { getRequestUser } from "@/lib/admin";
 import { createTicketForCampaign, claimTicketUrl } from "@/lib/claims";
 import { createId, decryptSecret, encryptSecret, hashKey } from "@/lib/crypto";
 import { createLootLabsLink } from "@/lib/lootlabs";
@@ -8,10 +8,11 @@ import {
   listClaimCampaigns,
   listClaimRedemptions,
   listClaimTickets,
+  listScripts,
   saveClaimCampaign,
   saveClaimTicket,
 } from "@/lib/store";
-import { ClaimCampaign, ClaimProvider } from "@/lib/types";
+import { ClaimCampaign, ClaimProvider, LicenseRecord, ScriptProject, UserAccount } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -23,8 +24,25 @@ function safeNumber(value: unknown, fallback: number, min: number, max: number) 
   return Math.max(min, Math.min(max, number));
 }
 
+function canUsePremium(user: UserAccount) {
+  return user.role === "owner" || user.role === "admin" || user.plan === "pro" || user.plan === "enterprise";
+}
+
+function canSeeCampaign(user: UserAccount, campaign: ClaimCampaign) {
+  return user.role === "owner" || user.role === "admin" || campaign.ownerId === user.id;
+}
+
+function canUseScript(user: UserAccount, script: ScriptProject) {
+  return user.role === "owner" || user.role === "admin" || script.ownerId === user.id;
+}
+
+function canUseLicense(user: UserAccount, license: LicenseRecord | null) {
+  return Boolean(license && (user.role === "owner" || user.role === "admin" || license.ownerId === user.id));
+}
+
 export async function GET(request: NextRequest) {
-  if (!(await requireAdmin(request))) {
+  const user = await getRequestUser(request);
+  if (!user || !canUsePremium(user)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -34,37 +52,45 @@ export async function GET(request: NextRequest) {
     listClaimRedemptions(),
   ]);
   const origin = request.nextUrl.origin;
+  const visibleCampaigns = campaigns.filter((campaign) => canSeeCampaign(user, campaign));
+  const visibleCampaignIds = new Set(visibleCampaigns.map((campaign) => campaign.id));
 
   return NextResponse.json({
-    campaigns,
+    campaigns: visibleCampaigns,
     tickets: tickets.map((ticket) => ({
       ...ticket,
       claimUrl: claimTicketUrl(origin, ticket),
-    })),
-    redemptions,
+    })).filter((ticket) => visibleCampaignIds.has(ticket.campaignId)),
+    redemptions: redemptions.filter((redemption) => redemption.campaignId && visibleCampaignIds.has(redemption.campaignId)),
   });
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await requireAdmin(request))) {
+  const user = await getRequestUser(request);
+  if (!user || !canUsePremium(user)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json().catch(() => ({}));
   const now = new Date().toISOString();
   const provider = providers.includes(body.provider) ? body.provider : "lootlabs";
-  const scriptIds = Array.isArray(body.scriptIds) ? body.scriptIds.map(String).filter(Boolean) : [];
+  const scriptIds: string[] = Array.isArray(body.scriptIds) ? body.scriptIds.map(String).filter(Boolean) : [];
   const deliveryKey = String(body.deliveryKey || "").trim();
   const deliveryKeyHash = deliveryKey ? hashKey(deliveryKey) : null;
   const deliveryLicense = deliveryKeyHash ? await findLicenseByHash(deliveryKeyHash) : null;
 
-  if (!deliveryKey || !deliveryLicense) {
+  if (!deliveryKey || !deliveryLicense || !canUseLicense(user, deliveryLicense)) {
     return NextResponse.json({ error: "Paste an existing key from Key Inventory before creating an ad system." }, { status: 400 });
+  }
+  const allowedScriptIds = new Set((await listScripts()).filter((script) => canUseScript(user, script)).map((script) => script.id));
+  if (scriptIds.some((scriptId) => !allowedScriptIds.has(scriptId))) {
+    return NextResponse.json({ error: "Choose scripts from your own workspace." }, { status: 403 });
   }
 
   const apiKey = String(body.apiKey || "").trim();
   const campaign: ClaimCampaign = {
     id: createId(),
+    ownerId: user.id,
     name: String(body.name || "Untitled ad system"),
     provider,
     active: body.active !== false,

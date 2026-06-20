@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin";
+import { getRequestUser } from "@/lib/admin";
 import { nextRunFrom } from "@/lib/auto-keys";
 import { createId } from "@/lib/crypto";
-import { listAutoKeyRules, saveAutoKeyRule } from "@/lib/store";
-import { AutoKeyIntervalUnit, AutoKeyRule } from "@/lib/types";
+import { listAutoKeyRules, listScripts, saveAutoKeyRule } from "@/lib/store";
+import { AutoKeyIntervalUnit, AutoKeyRule, ScriptProject, UserAccount } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -15,16 +15,30 @@ function safeNumber(value: unknown, fallback: number, min: number, max: number) 
   return Math.max(min, Math.min(max, number));
 }
 
+function canUsePremium(user: UserAccount) {
+  return user.role === "owner" || user.role === "admin" || user.plan === "pro" || user.plan === "enterprise";
+}
+
+function canSeeRule(user: UserAccount, rule: AutoKeyRule) {
+  return user.role === "owner" || user.role === "admin" || rule.ownerId === user.id;
+}
+
+function canUseScript(user: UserAccount, script: ScriptProject) {
+  return user.role === "owner" || user.role === "admin" || script.ownerId === user.id;
+}
+
 export async function GET(request: NextRequest) {
-  if (!(await requireAdmin(request))) {
+  const user = await getRequestUser(request);
+  if (!user || !canUsePremium(user)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.json({ rules: await listAutoKeyRules() });
+  return NextResponse.json({ rules: (await listAutoKeyRules()).filter((rule) => canSeeRule(user, rule)) });
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await requireAdmin(request))) {
+  const user = await getRequestUser(request);
+  if (!user || !canUsePremium(user)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -32,10 +46,15 @@ export async function POST(request: NextRequest) {
   const now = new Date();
   const intervalCount = safeNumber(body.intervalCount, 1, 1, 365);
   const intervalUnit = units.includes(body.intervalUnit) ? body.intervalUnit : "days";
-  const scriptIds = Array.isArray(body.scriptIds) ? body.scriptIds.map(String).filter(Boolean) : [];
+  const scriptIds: string[] = Array.isArray(body.scriptIds) ? body.scriptIds.map(String).filter(Boolean) : [];
+  const allowedScriptIds = new Set((await listScripts()).filter((script) => canUseScript(user, script)).map((script) => script.id));
+  if (scriptIds.some((scriptId) => !allowedScriptIds.has(scriptId))) {
+    return NextResponse.json({ error: "Choose scripts from your own workspace." }, { status: 403 });
+  }
 
   const rule: AutoKeyRule = {
     id: createId(),
+    ownerId: user.id,
     name: String(body.name || "Untitled auto key"),
     active: body.active !== false,
     scriptIds,

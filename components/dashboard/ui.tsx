@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { Crown } from "lucide-react";
 import { AnimatedNumber } from "@/components/motion";
 
 export const dashboardTheme = {
@@ -83,7 +84,7 @@ export function Tabs({
   active,
   onChange,
 }: {
-  tabs: Array<{ id: string; label: string; icon?: React.ComponentType<{ size?: string | number; className?: string }> }>;
+  tabs: Array<{ id: string; label: string; locked?: boolean; icon?: React.ComponentType<{ size?: string | number; className?: string }> }>;
   active: string;
   onChange: (id: string) => void;
 }) {
@@ -99,7 +100,8 @@ export function Tabs({
           type="button"
         >
           {tab.icon ? <tab.icon className={active === tab.id ? "text-rose-400" : "text-zinc-600"} size={16} /> : null}
-          {tab.label}
+          <span className="min-w-0 flex-1 truncate">{tab.label}</span>
+          {tab.locked ? <Crown className="shrink-0 text-amber-300" size={14} /> : null}
         </button>
       ))}
     </div>

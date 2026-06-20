@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role,
+      plan: user.plan || "free",
+      subscriptionStatus: user.subscriptionStatus || "free",
     },
   });
 }
