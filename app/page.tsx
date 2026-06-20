@@ -8,7 +8,7 @@ const features = [
   [Shield, "Tamper Detection", "Track suspicious validation attempts and deny access in real time."],
   [Zap, "Fast Validation", "Designed for quick checks before your secured Lua script continues."],
   [Globe2, "LootLabs Monetization", "Create LootLabs key flows that return users to a signed AegisLua claim page."],
-  [Code2, "Protected Loader", "Upload Lua source, store it encrypted, and distribute a hosted loadstring."],
+  [Code2, "Protected Loader", "Upload a Lua file, store it encrypted, and distribute a key-gated loadstring."],
 ];
 
 const stats = [

@@ -63,7 +63,7 @@ The first signup becomes the owner account. Later signups become customer accoun
 
 Current features:
 
-- Upload/paste Lua source and create protected loader URLs
+- Upload `.lua` or `.luau` files and create protected loader URLs
 - Enable or disable scripts
 - Create licenses for selected scripts
 - Set max Roblox users per license
@@ -78,7 +78,7 @@ Current features:
 
 Ad systems are designed for LootLabs monetized redirect flows:
 
-1. Upload or paste Lua source in Scripts to create a protected loader.
+1. Upload a `.lua` or `.luau` file in Scripts to create a protected loader.
 2. Create or generate a key in Key Management or Auto Key Gen.
 3. Create an ad system, select the script, and paste that existing key into the delivery key field.
 4. Paste your LootLabs API key and choose tier, theme, and task count.

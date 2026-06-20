@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   const sourceCode = String(body.sourceCode || "").trim();
 
   if (!sourceCode) {
-    return NextResponse.json({ error: "Paste Lua source before protecting a script." }, { status: 400 });
+    return NextResponse.json({ error: "Upload a Lua or Luau file before protecting a script." }, { status: 400 });
   }
 
   const record: ScriptProject = {

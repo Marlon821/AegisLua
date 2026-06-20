@@ -17,6 +17,7 @@ import {
   Power,
   Shield,
   Trash2,
+  Upload,
   Wand2,
 } from "lucide-react";
 import { Badge, EmptyState, Field, MiniBarChart, Panel, StatCard, Tabs, dashboardTheme } from "@/components/dashboard/ui";
@@ -93,7 +94,7 @@ const tabs = [
   { id: "auto", label: "Auto Key Gen", icon: Wand2 },
   { id: "deployment", label: "Ad Systems", icon: Megaphone },
   { id: "logs", label: "Logs", icon: Activity },
-  { id: "api", label: "API", icon: Code2 },
+  { id: "api", label: "Advanced", icon: Code2 },
 ];
 
 export default function DashboardPage() {
@@ -112,6 +113,7 @@ export default function DashboardPage() {
 
   const [scriptName, setScriptName] = useState("");
   const [scriptSource, setScriptSource] = useState("");
+  const [scriptFileName, setScriptFileName] = useState("");
   const [newLoaderSnippet, setNewLoaderSnippet] = useState("");
   const [licenseLabel, setLicenseLabel] = useState("");
   const [selectedScriptIds, setSelectedScriptIds] = useState<string[]>([]);
@@ -209,7 +211,7 @@ export default function DashboardPage() {
       return;
     }
     if (!scriptSource.trim()) {
-      setError("Paste the Lua source you want AegisLua to protect.");
+      setError("Choose the Lua or Luau file you want AegisLua to protect.");
       return;
     }
     const slug = slugifyClient(scriptName);
@@ -219,9 +221,10 @@ export default function DashboardPage() {
       slug,
       sourceCode: scriptSource,
       requireDeviceId: true,
-    }, `Script created. Use script ID "${slug}" in your Lua loader.`);
+    }, `Protected loader created for "${slug}". Users will see the AegisLua key prompt before the script runs.`);
     if (payload?.loaderSnippet) setNewLoaderSnippet(payload.loaderSnippet);
     setScriptSource("");
+    setScriptFileName("");
   }
 
   async function createLicense(event: FormEvent) {
@@ -433,6 +436,8 @@ export default function DashboardPage() {
             setScriptName={setScriptName}
             scriptSource={scriptSource}
             setScriptSource={setScriptSource}
+            scriptFileName={scriptFileName}
+            setScriptFileName={setScriptFileName}
             newLoaderSnippet={newLoaderSnippet}
             createScript={createScript}
             copy={copy}
@@ -570,6 +575,8 @@ function ScriptManagement(props: {
   setScriptName: (value: string) => void;
   scriptSource: string;
   setScriptSource: (value: string) => void;
+  scriptFileName: string;
+  setScriptFileName: (value: string) => void;
   newLoaderSnippet: string;
   createScript: (event: FormEvent) => void;
   copy: (value: string) => void;
@@ -577,23 +584,57 @@ function ScriptManagement(props: {
   deleteScript: (script: ScriptProject) => void;
 }) {
   const generatedId = slugifyClient(props.scriptName);
+  async function readScriptFile(file: File | undefined) {
+    if (!file) return;
+    const lowerName = file.name.toLowerCase();
+    if (!lowerName.endsWith(".lua") && !lowerName.endsWith(".luau")) {
+      props.setScriptFileName("");
+      props.setScriptSource("");
+      return;
+    }
+    props.setScriptFileName(file.name);
+    props.setScriptSource(await file.text());
+    if (!props.scriptName.trim()) {
+      props.setScriptName(file.name.replace(/\.(lua|luau)$/i, ""));
+    }
+  }
+
   return (
     <div className="grid gap-5 xl:grid-cols-[500px_1fr]">
       <Panel title="Protect a Script" meta="Upload source">
         <form className="grid gap-4" onSubmit={props.createScript}>
           <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
-            Paste your Lua source here. AegisLua stores it encrypted, adds the key gate in a hosted loader, and gives you a loadstring to distribute.
+            Upload a .lua or .luau file. AegisLua stores the source encrypted and gives you a hosted loadstring that opens a key prompt before the script can run.
           </div>
           <Field label="Script name">
             <input className={dashboardTheme.input} value={props.scriptName} onChange={(event) => props.setScriptName(event.target.value)} />
           </Field>
-          <Field label="Lua source">
-            <textarea
-              className={`${dashboardTheme.input} min-h-56 resize-y font-mono text-xs leading-5`}
-              value={props.scriptSource}
-              onChange={(event) => props.setScriptSource(event.target.value)}
-            />
+          <Field label="Lua or Luau file">
+            <label className="group flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-rose-400/35 bg-black/30 px-5 py-8 text-center transition hover:-translate-y-0.5 hover:border-rose-300/70 hover:bg-rose-500/10">
+              <input
+                accept=".lua,.luau"
+                className="sr-only"
+                type="file"
+                onChange={(event) => readScriptFile(event.target.files?.[0])}
+              />
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-rose-400/30 bg-rose-500/10 text-rose-200 transition group-hover:scale-105">
+                <Upload size={22} />
+              </span>
+              <strong className="mt-4 text-white">Choose script file</strong>
+              <span className="mt-1 text-sm text-zinc-500">Only .lua and .luau files are accepted.</span>
+            </label>
           </Field>
+          {props.scriptFileName ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <span className="text-xs uppercase tracking-[0.18em] text-zinc-500">Selected file</span>
+                  <strong className="mt-1 block break-all text-white">{props.scriptFileName}</strong>
+                </div>
+                <Badge tone="good">{Math.max(1, Math.ceil(props.scriptSource.length / 1024))} KB loaded</Badge>
+              </div>
+            </div>
+          ) : null}
           <div className={dashboardTheme.panelSoft}>
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Generated script ID</span>
             <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-black/40 p-3">
@@ -1039,6 +1080,7 @@ function Logs({ logs, redemptions, licenses }: { logs: AuthLog[]; redemptions: C
 }
 
 function ApiDocs({ scripts }: { scripts: ScriptProject[] }) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const scriptSlug = scripts[0]?.slug || "your-script-id";
   const payload = `{
   "scriptId": "${scriptSlug}",
@@ -1068,22 +1110,39 @@ local function validateKey(key)
 end`;
   return (
     <div className="grid gap-5">
-      <Panel title="Validation Endpoint" meta="POST">
-        <code className="block break-all rounded-xl bg-black/55 p-4 text-rose-100">/api/auth/validate</code>
+      <Panel title="Advanced Mode" meta="Optional API access">
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <p className="text-sm leading-6 text-slate-400">
+              The normal workflow uses protected loaders: upload a script, copy the loadstring, and let AegisLua show the key GUI automatically. Turn this on only if you want to integrate the raw validation API yourself.
+            </p>
+          </div>
+          <button className={`${dashboardTheme.button} flex items-center justify-center gap-2`} onClick={() => setShowAdvanced(!showAdvanced)} type="button">
+            <Code2 size={16} />
+            {showAdvanced ? "Hide API docs" : "Show API docs"}
+          </button>
+        </div>
       </Panel>
-      <Panel title="JSON Payload">
-        <pre className="overflow-auto rounded-xl bg-black/55 p-4 text-sm text-slate-200">{payload}</pre>
-      </Panel>
-      <Panel title="Lua Example">
-        <pre className="overflow-auto rounded-xl bg-black/55 p-4 text-sm text-slate-200">{lua}</pre>
-      </Panel>
-      <Panel title="Response Rules">
-        <ul className="grid gap-2 text-sm text-slate-300">
-          <li>200 with <code className="text-rose-300">ok=true</code> means the script can run.</li>
-          <li>403 with <code className="text-rose-300">invalid_license</code>, <code className="text-rose-300">device_limit_reached</code>, or <code className="text-rose-300">license_expired</code> means block execution.</li>
-          <li>Every validation attempt is saved in Logs.</li>
-        </ul>
-      </Panel>
+      {showAdvanced ? (
+        <>
+          <Panel title="Validation Endpoint" meta="POST">
+            <code className="block break-all rounded-xl bg-black/55 p-4 text-rose-100">/api/auth/validate</code>
+          </Panel>
+          <Panel title="JSON Payload">
+            <pre className="overflow-auto rounded-xl bg-black/55 p-4 text-sm text-slate-200">{payload}</pre>
+          </Panel>
+          <Panel title="Lua Example">
+            <pre className="overflow-auto rounded-xl bg-black/55 p-4 text-sm text-slate-200">{lua}</pre>
+          </Panel>
+          <Panel title="Response Rules">
+            <ul className="grid gap-2 text-sm text-slate-300">
+              <li>200 with <code className="text-rose-300">ok=true</code> means the script can run.</li>
+              <li>403 with <code className="text-rose-300">invalid_license</code>, <code className="text-rose-300">device_limit_reached</code>, or <code className="text-rose-300">license_expired</code> means block execution.</li>
+              <li>Every validation attempt is saved in Logs.</li>
+            </ul>
+          </Panel>
+        </>
+      ) : null}
     </div>
   );
 }
