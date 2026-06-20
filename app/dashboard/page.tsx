@@ -8,12 +8,16 @@ import {
   BarChart3,
   Code2,
   Copy,
+  Eye,
+  EyeOff,
   FileCode2,
   KeyRound,
   Link2,
   Megaphone,
   Plus,
   Power,
+  Search,
+  Settings,
   Shield,
   Trash2,
   Upload,
@@ -108,6 +112,7 @@ const tabs = [
   { id: "auto", label: "Auto Keys", icon: Wand2 },
   { id: "deployment", label: "Ad Systems", icon: Megaphone },
   { id: "logs", label: "Logs", icon: Activity },
+  { id: "settings", label: "Settings", icon: Settings },
   { id: "owner", label: "Owner", icon: Users, ownerOnly: true },
   { id: "api", label: "Advanced", icon: Code2 },
 ];
@@ -142,6 +147,11 @@ const tabMeta: Record<string, { eyebrow: string; title: string; description: str
     eyebrow: "Monitoring",
     title: "Logs",
     description: "Inspect script executions, claim redemptions, and recently seen players.",
+  },
+  settings: {
+    eyebrow: "Workspace",
+    title: "Settings",
+    description: "Manage your account, session, and deletion controls from one quiet place.",
   },
   owner: {
     eyebrow: "Owner tools",
@@ -262,6 +272,20 @@ export default function DashboardPage() {
 
   async function logout() {
     await fetch("/api/account/logout", { method: "POST" });
+    router.push("/");
+  }
+
+  async function deleteOwnAccount() {
+    const confirmed = window.confirm("Delete your AegisLua account and all account access? This cannot be undone.");
+    if (!confirmed) return;
+    setError("");
+    setNotice("");
+    const response = await fetch("/api/account/me", { method: "DELETE" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setError(payload.error || "Could not delete your account.");
+      return;
+    }
     router.push("/");
   }
 
@@ -431,7 +455,7 @@ export default function DashboardPage() {
   if (!user) return <main className="grid min-h-screen place-items-center text-slate-300">Loading AegisLua...</main>;
 
   if (user.role === "customer") {
-    return <CustomerPortal user={user} logout={logout} />;
+    return <CustomerPortal user={user} logout={logout} deleteOwnAccount={deleteOwnAccount} />;
   }
 
   const visibleTabs = tabs.filter((tab) => !tab.ownerOnly || user.role === "owner");
@@ -600,6 +624,7 @@ export default function DashboardPage() {
           ) : null}
 
           {activeTab === "logs" ? <Logs logs={logs} redemptions={redemptions} licenses={licenses} /> : null}
+          {activeTab === "settings" ? <SettingsPanel user={user} logout={logout} deleteOwnAccount={deleteOwnAccount} /> : null}
           {activeTab === "owner" && user.role === "owner" ? (
             <UserManagement
               users={managedUsers}
@@ -619,7 +644,7 @@ export default function DashboardPage() {
   );
 }
 
-function CustomerPortal({ user, logout }: { user: AppUser; logout: () => void }) {
+function CustomerPortal({ user, logout, deleteOwnAccount }: { user: AppUser; logout: () => void; deleteOwnAccount: () => void }) {
   return (
     <InteractiveShell className={`${dashboardTheme.page} min-h-screen`}>
       <main className="mx-auto grid min-h-screen max-w-6xl content-center gap-5 px-6 py-10">
@@ -657,8 +682,64 @@ function CustomerPortal({ user, logout }: { user: AppUser; logout: () => void })
             ))}
           </div>
         </Panel>
+        <Panel title="Settings">
+          <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <h3 className="font-black text-white">Account</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500">{user.email}</p>
+            </div>
+            <button className={dashboardTheme.dangerButton} onClick={deleteOwnAccount} type="button">
+              Delete account
+            </button>
+          </div>
+        </Panel>
       </main>
     </InteractiveShell>
+  );
+}
+
+function SettingsPanel({ user, logout, deleteOwnAccount }: { user: AppUser; logout: () => void; deleteOwnAccount: () => void }) {
+  return (
+    <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+      <Panel title="Account">
+        <div className="grid gap-3">
+          <InfoRow label="Name" value={user.name} />
+          <InfoRow label="Email" value={user.email} />
+          <InfoRow label="Role" value={user.role} />
+        </div>
+      </Panel>
+      <Panel title="Session">
+        <p className="text-sm leading-6 text-slate-400">
+          Your login is remembered with a secure browser cookie. Sign out when using a shared device.
+        </p>
+        <button className={`${dashboardTheme.ghostButton} mt-4 w-full`} onClick={logout} type="button">
+          Logout
+        </button>
+      </Panel>
+      <section className="glass-card rounded-2xl border-rose-500/30 p-4 sm:p-5 lg:col-span-2">
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-rose-500">Danger zone</p>
+            <h2 className="mt-2 text-lg font-black text-white">Delete account</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+              This removes your account and signs this browser out. Owner accounts cannot delete themselves when they are the only owner.
+            </p>
+          </div>
+          <button className={dashboardTheme.dangerButton} onClick={deleteOwnAccount} type="button">
+            Delete my account
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-1 rounded-xl border border-white/10 bg-black/35 p-3">
+      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">{label}</span>
+      <strong className="break-all text-sm text-white">{value}</strong>
+    </div>
   );
 }
 
@@ -714,6 +795,12 @@ function ScriptManagement(props: {
 }) {
   const generatedId = slugifyClient(props.scriptName);
   const [creating, setCreating] = useState(false);
+  const [query, setQuery] = useState("");
+  const filteredScripts = props.scripts.filter((script) => {
+    const search = query.trim().toLowerCase();
+    if (!search) return true;
+    return script.name.toLowerCase().includes(search) || script.slug.toLowerCase().includes(search);
+  });
   async function readScriptFile(file: File | undefined) {
     if (!file) return;
     const lowerName = file.name.toLowerCase();
@@ -744,55 +831,66 @@ function ScriptManagement(props: {
         {props.newLoaderSnippet ? <CopyBox label="Newest protected loader" value={props.newLoaderSnippet} copy={props.copy} compact /> : null}
       </Panel>
 
-      <div className="grid gap-4">
+      <Panel title="Protected Scripts" meta={`${filteredScripts.length} shown`}>
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <label className="relative block lg:w-80">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
+            <input
+              className={`${dashboardTheme.input} py-2.5 pl-10`}
+              placeholder="Search scripts"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <span className="text-sm text-slate-500">{props.scripts.length} total scripts</span>
+        </div>
         {props.scripts.length === 0 ? <EmptyState text="No scripts yet. Protect a Lua file to generate your first loader." /> : null}
-        {props.scripts.map((script) => {
+        {props.scripts.length > 0 && filteredScripts.length === 0 ? <EmptyState text="No scripts match that search." /> : null}
+        <div className="overflow-x-auto">
+          <div className="min-w-[860px] overflow-hidden rounded-2xl border border-white/10">
+            <div className="grid grid-cols-[1.2fr_1fr_0.55fr_0.6fr_0.9fr] border-b border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-600">
+              <span>Script</span>
+              <span>ID</span>
+              <span>Runs</span>
+              <span>Status</span>
+              <span className="text-right">Actions</span>
+            </div>
+            {filteredScripts.map((script) => {
           const runs = props.logs.filter((log) => log.ok && log.scriptId === script.id).length;
           return (
-            <article className="glass-card rounded-2xl p-5" key={script.id}>
-              <div className="grid gap-5 xl:grid-cols-[1fr_auto]">
+              <div className="grid grid-cols-[1.2fr_1fr_0.55fr_0.6fr_0.9fr] items-center gap-3 border-b border-white/5 px-4 py-3 text-sm last:border-b-0" key={script.id}>
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <FileCode2 className="text-rose-500" size={18} />
-                    <strong className="text-lg text-white">{script.name}</strong>
-                    <Badge tone={script.active ? "good" : "bad"}>{script.active ? "Active" : "Disabled"}</Badge>
-                    <Badge>{script.sourceBytes ? `${Math.ceil(script.sourceBytes / 1024)} KB` : "No source"}</Badge>
-                  </div>
-                  <div className="mt-4 grid gap-3 text-sm lg:grid-cols-3">
-                    <div className="rounded-xl border border-white/10 bg-black/35 p-3">
-                      <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">Script ID</span>
-                      <code className="mt-1 block break-all text-sm text-rose-300">{script.slug}</code>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-black/35 p-3">
-                      <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">Executions</span>
-                      <strong className="mt-1 block text-white">{runs}</strong>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-black/35 p-3">
-                      <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">Protected</span>
-                      <strong className="mt-1 block text-white">{script.sourceBytes ? `${Math.ceil(script.sourceBytes / 1024)} KB` : "No source"}</strong>
+                    <div className="min-w-0">
+                      <strong className="block truncate text-white">{script.name}</strong>
+                      <span className="text-xs text-slate-500">{script.sourceBytes ? `${Math.ceil(script.sourceBytes / 1024)} KB protected` : "No source stored"}</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 xl:max-w-[190px] xl:justify-end">
-                  <button className={`${dashboardTheme.button} flex items-center gap-2`} onClick={() => props.copy(loaderSnippetFor(script.slug))} type="button">
+                <code className="truncate text-xs text-rose-300">{script.slug}</code>
+                <strong className="text-white">{runs}</strong>
+                <Badge tone={script.active ? "good" : "bad"}>{script.active ? "Active" : "Disabled"}</Badge>
+                <div className="flex justify-end gap-2">
+                  <button className={`${dashboardTheme.button} flex items-center gap-2 px-3 py-2 text-xs`} onClick={() => props.copy(loaderSnippetFor(script.slug))} type="button">
                     <Copy size={15} />
-                    Copy loader
+                    Loader
                   </button>
-                  <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.copy(script.slug)} type="button">Copy ID</button>
-                  <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleScript(script)} type="button">
+                  <button className={`${dashboardTheme.ghostButton} px-3 py-2 text-xs`} onClick={() => props.copy(script.slug)} type="button">ID</button>
+                  <button className={`${dashboardTheme.ghostButton} flex items-center gap-2 px-3 py-2 text-xs`} onClick={() => props.toggleScript(script)} type="button">
                     <Power size={15} />
                     {script.active ? "Disable" : "Enable"}
                   </button>
-                  <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteScript(script)} type="button">
+                  <button className={`${dashboardTheme.dangerButton} flex items-center gap-2 px-3 py-2 text-xs`} onClick={() => props.deleteScript(script)} type="button">
                     <Trash2 size={15} />
-                    Remove
                   </button>
                 </div>
               </div>
-            </article>
           );
         })}
-      </div>
+          </div>
+        </div>
+      </Panel>
 
       <Modal open={creating} title="Protect a Script" onClose={() => setCreating(false)}>
         <form
@@ -876,6 +974,18 @@ function KeyManagement(props: {
 }) {
   const [creating, setCreating] = useState(false);
   const [visibleKeys, setVisibleKeys] = useState<Record<string, string>>({});
+  const [query, setQuery] = useState("");
+  const [scriptFilter, setScriptFilter] = useState("all");
+  const filteredLicenses = props.licenses.filter((license) => {
+    const search = query.trim().toLowerCase();
+    const scriptMatch = scriptFilter === "all" || license.scriptIds.includes(scriptFilter);
+    const textMatch =
+      !search ||
+      license.label.toLowerCase().includes(search) ||
+      props.scriptNames(license.scriptIds).toLowerCase().includes(search) ||
+      visibleKeys[license.id]?.toLowerCase().includes(search);
+    return scriptMatch && textMatch;
+  });
 
   async function revealKey(license: License) {
     const key = await props.revealLicenseKey(license);
@@ -899,52 +1009,98 @@ function KeyManagement(props: {
         {props.newKey ? <KeyBox label="Newest key, shown here for this session" value={props.newKey} /> : null}
       </Panel>
 
-      <Panel title="Key Inventory">
-        <div className="grid gap-3">
-          {props.licenses.length === 0 ? <EmptyState text="No keys generated yet." /> : null}
-          {props.licenses.map((license) => {
+      <Panel title="Key Inventory" meta={`${filteredLicenses.length} shown`}>
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <label className="relative block sm:w-80">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
+              <input
+                className={`${dashboardTheme.input} py-2.5 pl-10`}
+                placeholder="Search keys"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+            <select className={`${dashboardTheme.input} py-2.5 sm:w-56`} value={scriptFilter} onChange={(event) => setScriptFilter(event.target.value)}>
+              <option value="all">All scripts</option>
+              {props.scripts.map((script) => <option key={script.id} value={script.id}>{script.name}</option>)}
+            </select>
+          </div>
+          <span className="text-sm text-slate-500">{props.licenses.length} total keys</span>
+        </div>
+        {props.licenses.length === 0 ? <EmptyState text="No keys generated yet." /> : null}
+        {props.licenses.length > 0 && filteredLicenses.length === 0 ? <EmptyState text="No keys match those filters." /> : null}
+        <div className="overflow-x-auto">
+          <div className="min-w-[980px] overflow-hidden rounded-2xl border border-white/10">
+            <div className="grid grid-cols-[1.05fr_1.35fr_1fr_0.75fr_0.8fr_1fr] border-b border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-600">
+              <span>Label</span>
+              <span>Key</span>
+              <span>Script</span>
+              <span>Limits</span>
+              <span>Status</span>
+              <span className="text-right">Actions</span>
+            </div>
+            {filteredLicenses.map((license) => {
             const visibleKey = visibleKeys[license.id];
             return (
-              <article className={dashboardTheme.panelSoft} key={license.id}>
-                <div className="grid gap-4 xl:grid-cols-[1fr_auto]">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <KeyRound className="text-rose-500" size={18} />
-                      <strong className="text-white">{license.label}</strong>
-                      <Badge tone={license.active ? "good" : "bad"}>{license.active ? "Active" : "Revoked"}</Badge>
-                      <Badge tone={license.hasStoredKey ? "neutral" : "warn"}>{license.hasStoredKey ? "Revealable" : "Legacy hash only"}</Badge>
-                    </div>
-                    <div className="mt-3 grid gap-2 text-sm text-slate-500 md:grid-cols-4">
-                      <span><strong className="text-slate-300">Script:</strong> {props.scriptNames(license.scriptIds) || "No scripts assigned"}</span>
-                      <span><strong className="text-slate-300">Users:</strong> {license.maxUsers >= 1000000 ? "Shared" : `${license.users.length} / ${license.maxUsers}`}</span>
-                      <span><strong className="text-slate-300">Devices:</strong> {license.maxDevices >= 1000000 ? "Shared" : `${license.devices.length} / ${license.maxDevices}`}</span>
-                      <span><strong className="text-slate-300">Expiry:</strong> {license.expiresAt ? new Date(license.expiresAt).toLocaleDateString() : "None"}</span>
-                    </div>
-                    {visibleKey ? (
-                      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-rose-400/25 bg-rose-500/10 p-3 sm:flex-row sm:items-center">
-                        <code className="min-w-0 flex-1 break-all text-sm text-rose-100">{visibleKey}</code>
-                        <button className={dashboardTheme.ghostButton} onClick={() => props.copy(visibleKey)} type="button">Copy</button>
-                      </div>
-                    ) : null}
+              <div className="grid grid-cols-[1.05fr_1.35fr_1fr_0.75fr_0.8fr_1fr] items-center gap-3 border-b border-white/5 px-4 py-3 text-sm last:border-b-0" key={license.id}>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="shrink-0 text-rose-500" size={17} />
+                    <strong className="truncate text-white">{license.label}</strong>
                   </div>
-                  <div className="flex flex-wrap gap-2 xl:justify-end">
-                    <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} disabled={!license.hasStoredKey} onClick={() => revealKey(license)} type="button">
-                      <Copy size={15} />
-                      {visibleKey ? "Refresh" : "Show key"}
+                  <span className="mt-1 block text-xs text-slate-600">{license.expiresAt ? `Expires ${new Date(license.expiresAt).toLocaleDateString()}` : "No expiry"}</span>
+                </div>
+                <code className="truncate rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs text-rose-100">
+                  {visibleKey || (license.hasStoredKey ? "AEGIS-****************" : "Legacy hash only")}
+                </code>
+                <span className="truncate text-slate-400">{props.scriptNames(license.scriptIds) || "No scripts"}</span>
+                <span className="text-xs text-slate-500">
+                  {license.maxUsers >= 1000000 ? "Shared" : `${license.users.length}/${license.maxUsers} users`}
+                  <br />
+                  {license.maxDevices >= 1000000 ? "Any device" : `${license.devices.length}/${license.maxDevices} devices`}
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge tone={license.active ? "good" : "bad"}>{license.active ? "Active" : "Revoked"}</Badge>
+                  {!license.hasStoredKey ? <Badge tone="warn">Legacy</Badge> : null}
+                </div>
+                <div className="flex justify-end gap-2">
+                  {visibleKey ? (
+                    <button className={`${dashboardTheme.ghostButton} px-3 py-2 text-xs`} onClick={() => props.copy(visibleKey)} type="button">
+                      Copy
                     </button>
-                    <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleLicense(license)} type="button">
+                  ) : null}
+                  <button
+                    className={`${dashboardTheme.ghostButton} flex items-center gap-2 px-3 py-2 text-xs`}
+                    disabled={!license.hasStoredKey}
+                    onClick={() => {
+                      if (visibleKey) {
+                        setVisibleKeys((current) => {
+                          const next = { ...current };
+                          delete next[license.id];
+                          return next;
+                        });
+                      } else {
+                        revealKey(license);
+                      }
+                    }}
+                    type="button"
+                  >
+                      {visibleKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                      {visibleKey ? "Hide" : "Show"}
+                    </button>
+                    <button className={`${dashboardTheme.ghostButton} flex items-center gap-2 px-3 py-2 text-xs`} onClick={() => props.toggleLicense(license)} type="button">
                       <Power size={15} />
                       {license.active ? "Disable" : "Enable"}
                     </button>
-                    <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteLicense(license)} type="button">
+                    <button className={`${dashboardTheme.dangerButton} flex items-center gap-2 px-3 py-2 text-xs`} onClick={() => props.deleteLicense(license)} type="button">
                       <Trash2 size={15} />
-                      Remove
                     </button>
-                  </div>
                 </div>
-              </article>
+              </div>
             );
           })}
+          </div>
         </div>
       </Panel>
 
@@ -1337,8 +1493,8 @@ function UserManagement(props: {
           {props.users.length === 0 ? <EmptyState text="No users found." /> : null}
           {props.users.map((managedUser) => (
             <article className={dashboardTheme.panelSoft} key={managedUser.id}>
-              <div className="grid gap-4 xl:grid-cols-[1.4fr_2fr_auto] xl:items-center">
-                <div>
+              <div className="grid gap-4 2xl:grid-cols-[minmax(240px,1fr)_minmax(560px,1.8fr)] 2xl:items-start">
+                <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <Users className="text-rose-500" size={18} />
                     <strong className="text-white">{managedUser.name}</strong>
@@ -1350,10 +1506,10 @@ function UserManagement(props: {
                     Joined {new Date(managedUser.createdAt).toLocaleDateString()} - Last login {managedUser.lastLoginAt ? new Date(managedUser.lastLoginAt).toLocaleString() : "never"}
                   </p>
                 </div>
-                <div className="grid gap-3 md:grid-cols-4">
+                <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <Field label="Role">
                     <select
-                      className={dashboardTheme.input}
+                      className={`${dashboardTheme.input} py-2.5`}
                       value={managedUser.role}
                       onChange={(event) => props.updateUser(managedUser, { role: event.target.value as ManagedUser["role"] })}
                     >
@@ -1364,7 +1520,7 @@ function UserManagement(props: {
                   </Field>
                   <Field label="Plan">
                     <select
-                      className={dashboardTheme.input}
+                      className={`${dashboardTheme.input} py-2.5`}
                       value={managedUser.plan}
                       onChange={(event) => props.updateUser(managedUser, { plan: event.target.value as ManagedUser["plan"] })}
                     >
@@ -1375,7 +1531,7 @@ function UserManagement(props: {
                   </Field>
                   <Field label="Subscription">
                     <select
-                      className={dashboardTheme.input}
+                      className={`${dashboardTheme.input} py-2.5`}
                       value={managedUser.subscriptionStatus}
                       onChange={(event) => props.updateUser(managedUser, { subscriptionStatus: event.target.value as ManagedUser["subscriptionStatus"] })}
                     >
@@ -1388,15 +1544,17 @@ function UserManagement(props: {
                   </Field>
                   <Field label="Renews">
                     <input
-                      className={dashboardTheme.input}
+                      className={`${dashboardTheme.input} py-2.5`}
                       type="datetime-local"
                       value={toDateTimeLocal(managedUser.subscriptionRenewsAt)}
                       onChange={(event) => props.updateUser(managedUser, { subscriptionRenewsAt: event.target.value ? new Date(event.target.value).toISOString() : null })}
                     />
                   </Field>
                 </div>
+              </div>
+              <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
                 <button
-                  className={managedUser.active ? dashboardTheme.dangerButton : dashboardTheme.ghostButton}
+                  className={`${managedUser.active ? dashboardTheme.dangerButton : dashboardTheme.ghostButton} px-3 py-2 text-xs`}
                   disabled={managedUser.id === props.currentUserId}
                   onClick={() => props.updateUser(managedUser, { active: !managedUser.active })}
                   type="button"
@@ -1404,7 +1562,7 @@ function UserManagement(props: {
                   {managedUser.active ? "Disable" : "Enable"}
                 </button>
                 <button
-                  className={dashboardTheme.dangerButton}
+                  className={`${dashboardTheme.dangerButton} px-3 py-2 text-xs`}
                   disabled={managedUser.id === props.currentUserId}
                   onClick={() => props.deleteUser(managedUser)}
                   type="button"

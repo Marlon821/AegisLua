@@ -15,7 +15,7 @@ export const dashboardTheme = {
   ghostButton:
     "rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-slate-200 transition hover:-translate-y-0.5 hover:border-rose-500/40 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50",
   dangerButton:
-    "rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm font-bold text-rose-100 transition hover:bg-rose-400/20",
+    "rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm font-bold text-rose-100 transition hover:bg-rose-400/20 disabled:cursor-not-allowed disabled:opacity-50",
   label: "grid gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500",
 };
 
