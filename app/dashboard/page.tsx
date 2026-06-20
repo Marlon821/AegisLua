@@ -1,0 +1,1169 @@
+"use client";
+
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  Activity,
+  BarChart3,
+  CheckCircle2,
+  Code2,
+  Copy,
+  FileCode2,
+  KeyRound,
+  Link2,
+  Megaphone,
+  Plus,
+  Power,
+  Shield,
+  Trash2,
+  Wand2,
+} from "lucide-react";
+import { Badge, EmptyState, Field, MiniBarChart, Panel, StatCard, Tabs, dashboardTheme } from "@/components/dashboard/ui";
+import { InteractiveShell, Reveal } from "@/components/motion";
+
+type AppUser = { id: string; email: string; name: string; role: string };
+type ScriptProject = { id: string; name: string; slug: string; active: boolean; requireDeviceId: boolean; sourceBytes?: number; protectedAt?: string | null };
+type Device = { hash: string; userId: string; username: string | null; status: "active" | "blocked" };
+type License = {
+  id: string;
+  label: string;
+  active: boolean;
+  scriptIds: string[];
+  maxUsers: number;
+  users: string[];
+  maxDevices: number;
+  devices: Device[];
+  expiresAt: string | null;
+  lastUsername: string | null;
+};
+type AuthLog = {
+  id: string;
+  scriptId: string | null;
+  userId: string;
+  username: string;
+  ok: boolean;
+  reason: string;
+  createdAt: string;
+};
+type ClaimCampaign = {
+  id: string;
+  name: string;
+  provider: "lootlabs";
+  active: boolean;
+  scriptIds: string[];
+  labelPrefix: string;
+  apiKeyHash?: string | null;
+  deliveryKeyHash?: string | null;
+  deliveryLicenseId?: string | null;
+  steps?: number;
+  keyDurationHours?: number;
+  discordRequired?: boolean;
+  maxUsers: number;
+  maxDevices: number;
+  licenseExpiresAt: string | null;
+  ticketTtlMinutes: number;
+  maxRedemptions: number;
+  tierId?: number;
+  themeId?: number;
+  thumbnailUrl?: string | null;
+};
+type ClaimTicket = { id: string; campaignId: string; expiresAt: string; maxRedemptions: number; redeemedCount: number; createdAt: string; claimUrl: string; monetizedUrl?: string | null };
+type ClaimRedemption = { id: string; campaignId: string | null; ticketId: string | null; licenseId: string | null; ok: boolean; reason: string; createdAt: string };
+type AutoKeyRule = {
+  id: string;
+  name: string;
+  active: boolean;
+  scriptIds: string[];
+  labelPrefix: string;
+  intervalCount: number;
+  intervalUnit: "days" | "weeks" | "months";
+  maxUsers: number;
+  maxDevices: number;
+  keyExpiresInDays: number | null;
+  lastGeneratedAt: string | null;
+  nextRunAt: string;
+  currentLicenseId: string | null;
+};
+
+const tabs = [
+  { id: "overview", label: "Overview", icon: BarChart3 },
+  { id: "scripts", label: "Scripts", icon: FileCode2 },
+  { id: "keys", label: "Keys", icon: KeyRound },
+  { id: "auto", label: "Auto Key Gen", icon: Wand2 },
+  { id: "deployment", label: "Ad Systems", icon: Megaphone },
+  { id: "logs", label: "Logs", icon: Activity },
+  { id: "api", label: "API", icon: Code2 },
+];
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState("overview");
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [scripts, setScripts] = useState<ScriptProject[]>([]);
+  const [licenses, setLicenses] = useState<License[]>([]);
+  const [logs, setLogs] = useState<AuthLog[]>([]);
+  const [campaigns, setCampaigns] = useState<ClaimCampaign[]>([]);
+  const [tickets, setTickets] = useState<ClaimTicket[]>([]);
+  const [redemptions, setRedemptions] = useState<ClaimRedemption[]>([]);
+  const [autoRules, setAutoRules] = useState<AutoKeyRule[]>([]);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const [scriptName, setScriptName] = useState("");
+  const [scriptSource, setScriptSource] = useState("");
+  const [newLoaderSnippet, setNewLoaderSnippet] = useState("");
+  const [licenseLabel, setLicenseLabel] = useState("");
+  const [selectedScriptIds, setSelectedScriptIds] = useState<string[]>([]);
+  const [claimScriptIds, setClaimScriptIds] = useState<string[]>([]);
+  const [maxUsers, setMaxUsers] = useState(1);
+  const [maxDevices, setMaxDevices] = useState(1);
+  const [expiresAt, setExpiresAt] = useState("");
+  const [newKey, setNewKey] = useState("");
+  const [newAutoKey, setNewAutoKey] = useState("");
+  const [newClaimUrl, setNewClaimUrl] = useState("");
+
+  const [claimName, setClaimName] = useState("");
+  const [claimProvider] = useState<ClaimCampaign["provider"]>("lootlabs");
+  const [claimApiKey, setClaimApiKey] = useState("");
+  const [claimDeliveryKey, setClaimDeliveryKey] = useState("");
+  const [claimSteps, setClaimSteps] = useState(3);
+  const [claimTierId, setClaimTierId] = useState(3);
+  const [claimThemeId, setClaimThemeId] = useState(1);
+  const [claimThumbnailUrl, setClaimThumbnailUrl] = useState("");
+  const [claimDiscordRequired, setClaimDiscordRequired] = useState(false);
+  const [claimTtl, setClaimTtl] = useState(60);
+  const [claimMaxRedemptions, setClaimMaxRedemptions] = useState(1);
+
+  const [autoName, setAutoName] = useState("");
+  const [autoScriptIds, setAutoScriptIds] = useState<string[]>([]);
+  const [autoIntervalCount, setAutoIntervalCount] = useState(1);
+  const [autoIntervalUnit, setAutoIntervalUnit] = useState<"days" | "weeks" | "months">("weeks");
+  const [autoExpiresInDays, setAutoExpiresInDays] = useState(7);
+
+  const revenuePerClaim = 0.015;
+  const allowedLogs = logs.filter((log) => log.ok);
+  const uniquePlayers = new Set(allowedLogs.map((log) => log.userId || log.username).filter(Boolean)).size;
+  const keysGenerated = licenses.length;
+  const completedClaims = redemptions.filter((redemption) => redemption.ok).length;
+  const estimatedRevenue = completedClaims * revenuePerClaim;
+  const boundDevices = licenses.reduce((sum, license) => sum + license.devices.length, 0);
+
+  const executionsChart = useMemo(() => makeDailyPoints(logs.filter((log) => log.ok).map((log) => log.createdAt)), [logs]);
+  const claimsChart = useMemo(() => makeDailyPoints(redemptions.filter((redemption) => redemption.ok).map((redemption) => redemption.createdAt)), [redemptions]);
+  const keyChart = useMemo(() => makeDailyPoints(licenses.map((license) => license.expiresAt || new Date().toISOString())), [licenses]);
+  const revenueChart = useMemo(() => claimsChart.map((point) => ({ ...point, value: Number((point.value * revenuePerClaim).toFixed(3)) })), [claimsChart]);
+
+  async function loadAccount() {
+    const response = await fetch("/api/account/me", { cache: "no-store" });
+    if (!response.ok) {
+      router.push("/login");
+      return;
+    }
+    const payload = await response.json();
+    setUser(payload.user);
+  }
+
+  async function loadData() {
+    setError("");
+    const [scriptsResponse, licensesResponse, logsResponse, claimsResponse, autoResponse] = await Promise.all([
+      fetch("/api/admin/scripts", { cache: "no-store" }),
+      fetch("/api/admin/licenses", { cache: "no-store" }),
+      fetch("/api/admin/logs", { cache: "no-store" }),
+      fetch("/api/admin/claims", { cache: "no-store" }),
+      fetch("/api/admin/auto-keys", { cache: "no-store" }),
+    ]);
+
+    if (!scriptsResponse.ok || !licensesResponse.ok || !logsResponse.ok || !claimsResponse.ok || !autoResponse.ok) {
+      setError("Your account does not have admin access or the backend environment is not configured.");
+      return;
+    }
+
+    setScripts((await scriptsResponse.json()).scripts || []);
+    setLicenses((await licensesResponse.json()).licenses || []);
+    setLogs((await logsResponse.json()).logs || []);
+    const claimsPayload = await claimsResponse.json();
+    setCampaigns(claimsPayload.campaigns || []);
+    setTickets(claimsPayload.tickets || []);
+    setRedemptions(claimsPayload.redemptions || []);
+    setAutoRules((await autoResponse.json()).rules || []);
+  }
+
+  useEffect(() => {
+    loadAccount();
+  }, []);
+
+  useEffect(() => {
+    if (user) loadData();
+  }, [user]);
+
+  async function logout() {
+    await fetch("/api/account/logout", { method: "POST" });
+    router.push("/");
+  }
+
+  async function createScript(event: FormEvent) {
+    event.preventDefault();
+    if (!scriptName.trim()) {
+      setError("Give the script a name first.");
+      return;
+    }
+    if (!scriptSource.trim()) {
+      setError("Paste the Lua source you want AegisLua to protect.");
+      return;
+    }
+    const slug = slugifyClient(scriptName);
+    setNewLoaderSnippet("");
+    const payload = await mutate("/api/admin/scripts", {
+      name: scriptName,
+      slug,
+      sourceCode: scriptSource,
+      requireDeviceId: true,
+    }, `Script created. Use script ID "${slug}" in your Lua loader.`);
+    if (payload?.loaderSnippet) setNewLoaderSnippet(payload.loaderSnippet);
+    setScriptSource("");
+  }
+
+  async function createLicense(event: FormEvent) {
+    event.preventDefault();
+    if (!licenseLabel.trim()) {
+      setError("Give this key a label first.");
+      return;
+    }
+    if (selectedScriptIds.length === 0) {
+      setError("Choose at least one script for this key.");
+      return;
+    }
+    setNewKey("");
+    const payload = await mutate("/api/admin/licenses", {
+      label: licenseLabel,
+      scriptIds: selectedScriptIds,
+      maxUsers,
+      maxDevices,
+      expiresAt: expiresAt || null,
+    }, "Long term key generated.");
+    if (payload?.key) setNewKey(payload.key);
+  }
+
+  async function createAdSystem(event: FormEvent) {
+    event.preventDefault();
+    if (!claimName.trim()) {
+      setError("Name this ad system first.");
+      return;
+    }
+    if (claimScriptIds.length === 0) {
+      setError("Choose the script this ad system should unlock.");
+      return;
+    }
+    if (!claimDeliveryKey.trim()) {
+      setError("Paste the existing key this ad system should deliver.");
+      return;
+    }
+    setNewClaimUrl("");
+    const payload = await mutate("/api/admin/claims", {
+      name: claimName,
+      provider: claimProvider,
+      scriptIds: claimScriptIds,
+      labelPrefix: `${claimName} key`,
+      apiKey: claimApiKey || null,
+      deliveryKey: claimDeliveryKey,
+      steps: claimSteps,
+      tierId: claimTierId,
+      themeId: claimThemeId,
+      thumbnailUrl: claimThumbnailUrl || null,
+      discordRequired: claimDiscordRequired,
+      maxUsers: 1000000,
+      maxDevices: 1000000,
+      ticketTtlMinutes: claimTtl,
+      maxRedemptions: claimMaxRedemptions,
+      licenseExpiresAt: expiresAt || null,
+    }, "Ad system created.");
+    if (payload?.monetizedUrl || payload?.claimUrl) setNewClaimUrl(payload.monetizedUrl || payload.claimUrl);
+    if (payload?.warning) setNotice(`Ad system created, but LootLabs returned: ${payload.warning}. The fallback AegisLua URL is shown.`);
+    setClaimApiKey("");
+    setClaimDeliveryKey("");
+  }
+
+  async function createAutoRule(event: FormEvent) {
+    event.preventDefault();
+    if (!autoName.trim()) {
+      setError("Name this auto key rule first.");
+      return;
+    }
+    if (autoScriptIds.length === 0) {
+      setError("Choose the script that should receive rotating keys.");
+      return;
+    }
+    await mutate("/api/admin/auto-keys", {
+      name: autoName,
+      scriptIds: autoScriptIds,
+      labelPrefix: autoName,
+      intervalCount: autoIntervalCount,
+      intervalUnit: autoIntervalUnit,
+      maxUsers: 1000000,
+      maxDevices: 1000000,
+      keyExpiresInDays: autoExpiresInDays || null,
+    }, "Auto key rule created.");
+  }
+
+  async function mutate(url: string, body: Record<string, unknown>, success: string) {
+    setError("");
+    setNotice("");
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setError(payload.error || "Request failed.");
+      return null;
+    }
+    setNotice(success);
+    await loadData();
+    return payload;
+  }
+
+  async function patch(url: string, body: Record<string, unknown>, success: string) {
+    setError("");
+    setNotice("");
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setError(payload.error || "Request failed.");
+      return null;
+    }
+    setNotice(success);
+    await loadData();
+    return payload;
+  }
+
+  async function remove(url: string, success: string) {
+    setError("");
+    setNotice("");
+    await fetch(url, { method: "DELETE" });
+    setNotice(success);
+    await loadData();
+  }
+
+  function scriptNames(scriptIds: string[]) {
+    return scriptIds.map((id) => scripts.find((script) => script.id === id)?.name || id).join(", ");
+  }
+
+  function copy(value: string) {
+    navigator.clipboard?.writeText(value).catch(() => undefined);
+    setNotice("Copied to clipboard.");
+  }
+
+  if (!user) return <main className="grid min-h-screen place-items-center text-slate-300">Loading AegisLua...</main>;
+
+  if (user.role === "customer") {
+    return (
+      <main className="grid min-h-screen place-items-center px-6">
+        <section className="glass-card max-w-2xl rounded-3xl p-8 text-center">
+          <h1 className="text-4xl font-black text-white">Customer portal</h1>
+          <p className="mt-4 text-slate-300">Owner/admin access is required to manage scripts, keys, and deployments.</p>
+          <button className={`${dashboardTheme.button} mt-6`} onClick={logout} type="button">Logout</button>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <InteractiveShell className={`${dashboardTheme.page} lg:grid lg:grid-cols-[290px_1fr]`}>
+      <aside className={dashboardTheme.sidebar}>
+        <Link className="mb-8 flex items-center gap-3" href="/">
+          <Shield className="text-rose-500" size={18} />
+          <div>
+            <strong className="brand-word block text-sm text-white">AEGISLUA</strong>
+            <span className="text-xs text-slate-400">{user.email}</span>
+          </div>
+        </Link>
+        <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+        <button className={`${dashboardTheme.ghostButton} mt-6 w-full`} onClick={logout} type="button">Logout</button>
+      </aside>
+
+      <section className="p-5 sm:p-8">
+        <header className="mb-8 glass-card rounded-3xl p-5 sm:p-6">
+          <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
+            <div>
+              <p className="font-mono text-xs font-black uppercase tracking-[0.28em] text-rose-500">AegisLua Control Center</p>
+              <h1 className="mt-2 text-4xl font-black text-white">{tabs.find((tab) => tab.id === activeTab)?.label}</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                Manage protected scripts, long-term keys, rotating public keys, ad systems, and validation logs from one place.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[520px]">
+              <div className={dashboardTheme.panelSoft}>
+                <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Scripts</span>
+                <strong className="mt-2 block text-2xl text-white">{scripts.length}</strong>
+              </div>
+              <div className={dashboardTheme.panelSoft}>
+                <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Keys</span>
+                <strong className="mt-2 block text-2xl text-white">{licenses.length}</strong>
+              </div>
+              <div className={dashboardTheme.panelSoft}>
+                <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Ad Systems</span>
+                <strong className="mt-2 block text-2xl text-white">{campaigns.length}</strong>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {error ? <div className="mb-6 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
+        {notice ? <div className="mb-6 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">{notice}</div> : null}
+
+        <Reveal className="tab-motion" key={activeTab}>
+          {activeTab === "overview" ? (
+            <Overview
+              stats={{ uniquePlayers, keysGenerated, completedClaims, estimatedRevenue, boundDevices }}
+              charts={{ executionsChart, claimsChart, keyChart, revenueChart }}
+            />
+          ) : null}
+
+          {activeTab === "scripts" ? (
+            <ScriptManagement
+            scripts={scripts}
+            logs={logs}
+            scriptName={scriptName}
+            setScriptName={setScriptName}
+            scriptSource={scriptSource}
+            setScriptSource={setScriptSource}
+            newLoaderSnippet={newLoaderSnippet}
+            createScript={createScript}
+            copy={copy}
+            toggleScript={(script) => patch(`/api/admin/scripts/${script.id}`, { active: !script.active }, script.active ? "Script disabled." : "Script enabled.")}
+            deleteScript={(script) => remove(`/api/admin/scripts/${script.id}`, "Script removed.")}
+          />
+          ) : null}
+
+          {activeTab === "keys" ? (
+            <KeyManagement
+              scripts={scripts}
+              licenses={licenses}
+              selectedScriptIds={selectedScriptIds}
+              setSelectedScriptIds={setSelectedScriptIds}
+              licenseLabel={licenseLabel}
+              setLicenseLabel={setLicenseLabel}
+              maxUsers={maxUsers}
+              setMaxUsers={setMaxUsers}
+              maxDevices={maxDevices}
+              setMaxDevices={setMaxDevices}
+              expiresAt={expiresAt}
+              setExpiresAt={setExpiresAt}
+              createLicense={createLicense}
+              newKey={newKey}
+            scriptNames={scriptNames}
+            toggleLicense={(license) => patch(`/api/admin/licenses/${license.id}`, { active: !license.active }, license.active ? "License revoked." : "License enabled.")}
+            deleteLicense={(license) => remove(`/api/admin/licenses/${license.id}`, "License deleted.")}
+          />
+          ) : null}
+
+          {activeTab === "auto" ? (
+          <AutoKeyManagement
+              scripts={scripts}
+              rules={autoRules}
+              autoName={autoName}
+              setAutoName={setAutoName}
+              autoScriptIds={autoScriptIds}
+              setAutoScriptIds={setAutoScriptIds}
+              autoIntervalCount={autoIntervalCount}
+              setAutoIntervalCount={setAutoIntervalCount}
+              autoIntervalUnit={autoIntervalUnit}
+              setAutoIntervalUnit={setAutoIntervalUnit}
+              autoExpiresInDays={autoExpiresInDays}
+            setAutoExpiresInDays={setAutoExpiresInDays}
+            createAutoRule={createAutoRule}
+            newAutoKey={newAutoKey}
+            openKeyInventory={() => setActiveTab("keys")}
+            scriptNames={scriptNames}
+            generateNow={async (rule) => {
+              setNewAutoKey("");
+              const payload = await patch(`/api/admin/auto-keys/${rule.id}`, { action: "generate" }, "Short-term key generated and added to Key Inventory.");
+              if (payload?.key) setNewAutoKey(payload.key);
+            }}
+              toggleRule={(rule) => patch(`/api/admin/auto-keys/${rule.id}`, { active: !rule.active }, rule.active ? "Auto rule paused." : "Auto rule enabled.")}
+              deleteRule={(rule) => remove(`/api/admin/auto-keys/${rule.id}`, "Auto rule deleted.")}
+            />
+          ) : null}
+
+          {activeTab === "deployment" ? (
+            <AdSystems
+              scripts={scripts}
+              campaigns={campaigns}
+              tickets={tickets}
+              claimScriptIds={claimScriptIds}
+              setClaimScriptIds={setClaimScriptIds}
+            claimName={claimName}
+            setClaimName={setClaimName}
+            claimProvider={claimProvider}
+            claimApiKey={claimApiKey}
+            setClaimApiKey={setClaimApiKey}
+            claimDeliveryKey={claimDeliveryKey}
+            setClaimDeliveryKey={setClaimDeliveryKey}
+            claimSteps={claimSteps}
+            setClaimSteps={setClaimSteps}
+            claimTierId={claimTierId}
+            setClaimTierId={setClaimTierId}
+            claimThemeId={claimThemeId}
+            setClaimThemeId={setClaimThemeId}
+            claimThumbnailUrl={claimThumbnailUrl}
+            setClaimThumbnailUrl={setClaimThumbnailUrl}
+            claimDiscordRequired={claimDiscordRequired}
+            setClaimDiscordRequired={setClaimDiscordRequired}
+            claimTtl={claimTtl}
+              setClaimTtl={setClaimTtl}
+              claimMaxRedemptions={claimMaxRedemptions}
+              setClaimMaxRedemptions={setClaimMaxRedemptions}
+              createAdSystem={createAdSystem}
+              newClaimUrl={newClaimUrl}
+              copy={copy}
+              scriptNames={scriptNames}
+              generateTicket={(campaign) => patch(`/api/admin/claims/${campaign.id}`, { action: "ticket" }, "New ad system URL generated.")}
+              toggleCampaign={(campaign) => patch(`/api/admin/claims/${campaign.id}`, { active: !campaign.active }, campaign.active ? "Ad system disabled." : "Ad system enabled.")}
+              deleteCampaign={(campaign) => remove(`/api/admin/claims/${campaign.id}`, "Ad system deleted.")}
+            />
+          ) : null}
+
+          {activeTab === "logs" ? <Logs logs={logs} redemptions={redemptions} licenses={licenses} /> : null}
+          {activeTab === "api" ? <ApiDocs scripts={scripts} /> : null}
+        </Reveal>
+      </section>
+    </InteractiveShell>
+  );
+}
+
+function Overview({
+  stats,
+  charts,
+}: {
+  stats: { uniquePlayers: number; keysGenerated: number; completedClaims: number; estimatedRevenue: number; boundDevices: number };
+  charts: Record<string, Array<{ label: string; value: number }>>;
+}) {
+  return (
+    <div className="grid gap-5">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <StatCard label="Players executed" value={stats.uniquePlayers} hint="unique allowed users" />
+        <StatCard label="Keys generated" value={stats.keysGenerated} />
+        <StatCard label="Claims completed" value={stats.completedClaims} />
+        <StatCard label="Revenue estimate" value={`$${stats.estimatedRevenue.toFixed(2)}`} hint="based on completed claim logs" />
+        <StatCard label="Bound devices" value={stats.boundDevices} />
+      </section>
+      <section className="grid gap-5 xl:grid-cols-2">
+        <MiniBarChart label="Script executions" points={charts.executionsChart} />
+        <MiniBarChart label="Claim completions" points={charts.claimsChart} />
+        <MiniBarChart label="Keys generated" points={charts.keyChart} />
+        <MiniBarChart label="Revenue estimate" points={charts.revenueChart} />
+      </section>
+    </div>
+  );
+}
+
+function ScriptManagement(props: {
+  scripts: ScriptProject[];
+  logs: AuthLog[];
+  scriptName: string;
+  setScriptName: (value: string) => void;
+  scriptSource: string;
+  setScriptSource: (value: string) => void;
+  newLoaderSnippet: string;
+  createScript: (event: FormEvent) => void;
+  copy: (value: string) => void;
+  toggleScript: (script: ScriptProject) => void;
+  deleteScript: (script: ScriptProject) => void;
+}) {
+  const generatedId = slugifyClient(props.scriptName);
+  return (
+    <div className="grid gap-5 xl:grid-cols-[500px_1fr]">
+      <Panel title="Protect a Script" meta="Upload source">
+        <form className="grid gap-4" onSubmit={props.createScript}>
+          <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
+            Paste your Lua source here. AegisLua stores it encrypted, adds the key gate in a hosted loader, and gives you a loadstring to distribute.
+          </div>
+          <Field label="Script name">
+            <input className={dashboardTheme.input} value={props.scriptName} onChange={(event) => props.setScriptName(event.target.value)} />
+          </Field>
+          <Field label="Lua source">
+            <textarea
+              className={`${dashboardTheme.input} min-h-56 resize-y font-mono text-xs leading-5`}
+              value={props.scriptSource}
+              onChange={(event) => props.setScriptSource(event.target.value)}
+            />
+          </Field>
+          <div className={dashboardTheme.panelSoft}>
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Generated script ID</span>
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-black/40 p-3">
+              <code className="min-w-0 break-all text-sm text-rose-100">{props.scriptName.trim() ? generatedId : "Your script ID will appear here"}</code>
+              <button className={dashboardTheme.ghostButton} onClick={() => props.copy(generatedId)} type="button">
+                <Copy size={15} />
+              </button>
+            </div>
+          </div>
+          <button className={`${dashboardTheme.button} magnetic-button flex items-center justify-center gap-2`} type="submit">
+            <Plus size={16} />
+            Add script
+          </button>
+          {props.newLoaderSnippet ? <CopyBox label="Protected loader, shown once" value={props.newLoaderSnippet} copy={props.copy} /> : null}
+        </form>
+      </Panel>
+      <Panel title="Protected Scripts" meta={`${props.scripts.length} total`}>
+        <div className="grid gap-3">
+          {props.scripts.length === 0 ? <EmptyState text="No scripts yet. Add one to start validating keys." /> : null}
+          {props.scripts.map((script) => {
+            const runs = props.logs.filter((log) => log.ok && log.scriptId === script.id).length;
+            return (
+              <article className={dashboardTheme.panelSoft} key={script.id}>
+                <div className="flex flex-col justify-between gap-4 lg:flex-row">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <FileCode2 className="text-rose-500" size={18} />
+                      <strong className="text-white">{script.name}</strong>
+                      <Badge tone={script.active ? "good" : "bad"}>{script.active ? "Active" : "Disabled"}</Badge>
+                    </div>
+                    <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-black/30 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                      <div>
+                        <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">Script ID</span>
+                        <code className="mt-1 block break-all text-sm text-rose-300">{script.slug}</code>
+                      </div>
+                      <button className={dashboardTheme.ghostButton} onClick={() => props.copy(script.slug)} type="button">Copy ID</button>
+                    </div>
+                    <p className="mt-3 text-sm text-slate-500">
+                      {runs} successful executions tracked. {script.sourceBytes ? `${Math.ceil(script.sourceBytes / 1024)} KB protected source stored.` : "No source uploaded yet."}
+                    </p>
+                    <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
+                      <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">Loader</span>
+                      <code className="mt-2 block break-all text-xs text-rose-200">{loaderSnippetFor(script.slug)}</code>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button className={`${dashboardTheme.button} flex items-center gap-2`} onClick={() => props.copy(loaderSnippetFor(script.slug))} type="button">
+                      <Copy size={15} />
+                      Copy loader
+                    </button>
+                    <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleScript(script)} type="button">
+                      <Power size={15} />
+                      {script.active ? "Disable" : "Enable"}
+                    </button>
+                    <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteScript(script)} type="button">
+                      <Trash2 size={15} />
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function KeyManagement(props: {
+  scripts: ScriptProject[];
+  licenses: License[];
+  selectedScriptIds: string[];
+  setSelectedScriptIds: (value: string[]) => void;
+  licenseLabel: string;
+  setLicenseLabel: (value: string) => void;
+  maxUsers: number;
+  setMaxUsers: (value: number) => void;
+  maxDevices: number;
+  setMaxDevices: (value: number) => void;
+  expiresAt: string;
+  setExpiresAt: (value: string) => void;
+  createLicense: (event: FormEvent) => void;
+  newKey: string;
+  scriptNames: (ids: string[]) => string;
+  toggleLicense: (license: License) => void;
+  deleteLicense: (license: License) => void;
+}) {
+  return (
+    <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
+      <Panel title="Create Long-Term Key">
+        <form className="grid gap-4" onSubmit={props.createLicense}>
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm leading-6 text-zinc-400">
+            Long-term keys are best for paid customers, testers, or private access. These can have user/device limits and optional expiration.
+          </div>
+          <Field label="Label"><input className={dashboardTheme.input} value={props.licenseLabel} onChange={(event) => props.setLicenseLabel(event.target.value)} /></Field>
+          <MultiScriptSelect scripts={props.scripts} value={props.selectedScriptIds} onChange={props.setSelectedScriptIds} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Max users"><input className={dashboardTheme.input} min={1} type="number" value={props.maxUsers} onChange={(event) => props.setMaxUsers(Number(event.target.value))} /></Field>
+            <Field label="Max devices"><input className={dashboardTheme.input} min={1} type="number" value={props.maxDevices} onChange={(event) => props.setMaxDevices(Number(event.target.value))} /></Field>
+          </div>
+          <Field label="Expires"><input className={dashboardTheme.input} value={props.expiresAt} onChange={(event) => props.setExpiresAt(event.target.value)} type="datetime-local" /></Field>
+          <button className={`${dashboardTheme.button} magnetic-button flex items-center justify-center gap-2`} type="submit">
+            <KeyRound size={16} />
+            Generate key
+          </button>
+          {props.newKey ? <KeyBox label="New key, shown once" value={props.newKey} /> : null}
+        </form>
+      </Panel>
+      <Panel title="Key Inventory" meta={`${props.licenses.length} total`}>
+        <div className="grid gap-3">
+          {props.licenses.length === 0 ? <EmptyState text="No keys generated yet." /> : null}
+          {props.licenses.map((license) => (
+            <article className={dashboardTheme.panelSoft} key={license.id}>
+              <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <KeyRound className="text-rose-500" size={18} />
+                    <strong className="text-white">{license.label}</strong>
+                    <Badge tone={license.active ? "good" : "bad"}>{license.active ? "Active" : "Revoked"}</Badge>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-sm text-slate-500 md:grid-cols-3">
+                    <span><strong className="text-slate-300">Script:</strong> {props.scriptNames(license.scriptIds) || "No scripts assigned"}</span>
+                    <span><strong className="text-slate-300">Users:</strong> {license.maxUsers >= 1000000 ? "Shared" : `${license.users.length} / ${license.maxUsers}`}</span>
+                    <span><strong className="text-slate-300">Devices:</strong> {license.maxDevices >= 1000000 ? "Shared" : `${license.devices.length} / ${license.maxDevices}`}</span>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-500">{license.expiresAt ? `Expires ${new Date(license.expiresAt).toLocaleString()}` : "No expiry"}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 lg:justify-end">
+                  <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleLicense(license)} type="button">
+                    <Power size={15} />
+                    {license.active ? "Disable" : "Enable"}
+                  </button>
+                  <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteLicense(license)} type="button">
+                    <Trash2 size={15} />
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function AutoKeyManagement(props: {
+  scripts: ScriptProject[];
+  rules: AutoKeyRule[];
+  autoName: string;
+  setAutoName: (value: string) => void;
+  autoScriptIds: string[];
+  setAutoScriptIds: (value: string[]) => void;
+  autoIntervalCount: number;
+  setAutoIntervalCount: (value: number) => void;
+  autoIntervalUnit: "days" | "weeks" | "months";
+  setAutoIntervalUnit: (value: "days" | "weeks" | "months") => void;
+  autoExpiresInDays: number;
+  setAutoExpiresInDays: (value: number) => void;
+  createAutoRule: (event: FormEvent) => void;
+  newAutoKey: string;
+  openKeyInventory: () => void;
+  scriptNames: (ids: string[]) => string;
+  generateNow: (rule: AutoKeyRule) => void;
+  toggleRule: (rule: AutoKeyRule) => void;
+  deleteRule: (rule: AutoKeyRule) => void;
+}) {
+  return (
+    <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
+      <Panel title="Create Rotating Public Key Rule" meta="Shared access">
+        <form className="grid gap-4" onSubmit={props.createAutoRule}>
+          <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
+            Auto key rules generate one shared short-term key on a schedule. Each generated key is saved into Key Inventory automatically, so you can disable, enable, or remove it later.
+          </div>
+          <Field label="Rule name"><input className={dashboardTheme.input} value={props.autoName} onChange={(event) => props.setAutoName(event.target.value)} /></Field>
+          <MultiScriptSelect scripts={props.scripts} value={props.autoScriptIds} onChange={props.setAutoScriptIds} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Every"><input className={dashboardTheme.input} min={1} type="number" value={props.autoIntervalCount} onChange={(event) => props.setAutoIntervalCount(Number(event.target.value))} /></Field>
+            <Field label="Unit">
+              <select className={dashboardTheme.input} value={props.autoIntervalUnit} onChange={(event) => props.setAutoIntervalUnit(event.target.value as "days" | "weeks" | "months")}>
+                <option value="days">Days</option>
+                <option value="weeks">Weeks</option>
+                <option value="months">Months</option>
+              </select>
+            </Field>
+          </div>
+          <Field label="Generated key expires after days"><input className={dashboardTheme.input} min={1} type="number" value={props.autoExpiresInDays} onChange={(event) => props.setAutoExpiresInDays(Number(event.target.value))} /></Field>
+          <button className={`${dashboardTheme.button} magnetic-button flex items-center justify-center gap-2`} type="submit">
+            <Wand2 size={16} />
+            Create auto rule
+          </button>
+          {props.newAutoKey ? (
+            <div className="grid gap-3">
+              <KeyBox label="Generated short-term key, shown once" value={props.newAutoKey} />
+              <button className={dashboardTheme.ghostButton} onClick={props.openKeyInventory} type="button">View it in Key Inventory</button>
+            </div>
+          ) : null}
+        </form>
+      </Panel>
+      <Panel title="Short-Term Key Rules" meta={`${props.rules.length} rules`}>
+        <div className="grid gap-3">
+          {props.rules.length === 0 ? <EmptyState text="No auto key rules yet. Create one for rotating weekly or daily keys." /> : null}
+          {props.rules.map((rule) => (
+            <article className={dashboardTheme.panelSoft} key={rule.id}>
+              <div className="flex flex-col justify-between gap-3 lg:flex-row">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <strong className="text-white">{rule.name}</strong>
+                    <Badge tone={rule.active ? "good" : "bad"}>{rule.active ? "Active" : "Paused"}</Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-400">{props.scriptNames(rule.scriptIds) || "No scripts assigned"}</p>
+                  <p className="mt-1 text-sm text-slate-500">Shared key. Every {rule.intervalCount} {rule.intervalUnit}. Next: {new Date(rule.nextRunAt).toLocaleString()}</p>
+                  <p className="mt-1 text-sm text-slate-500">Last generated: {rule.lastGeneratedAt ? new Date(rule.lastGeneratedAt).toLocaleString() : "never"}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 lg:justify-end">
+                  <button className={`${dashboardTheme.button} flex items-center gap-2`} onClick={() => props.generateNow(rule)} type="button"><KeyRound size={15} />Generate now</button>
+                  <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleRule(rule)} type="button"><Power size={15} />{rule.active ? "Pause" : "Enable"}</button>
+                  <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteRule(rule)} type="button"><Trash2 size={15} />Delete</button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function AdSystems(props: {
+  scripts: ScriptProject[];
+  campaigns: ClaimCampaign[];
+  tickets: ClaimTicket[];
+  claimScriptIds: string[];
+  setClaimScriptIds: (value: string[]) => void;
+  claimName: string;
+  setClaimName: (value: string) => void;
+  claimProvider: ClaimCampaign["provider"];
+  claimApiKey: string;
+  setClaimApiKey: (value: string) => void;
+  claimDeliveryKey: string;
+  setClaimDeliveryKey: (value: string) => void;
+  claimSteps: number;
+  setClaimSteps: (value: number) => void;
+  claimTierId: number;
+  setClaimTierId: (value: number) => void;
+  claimThemeId: number;
+  setClaimThemeId: (value: number) => void;
+  claimThumbnailUrl: string;
+  setClaimThumbnailUrl: (value: string) => void;
+  claimDiscordRequired: boolean;
+  setClaimDiscordRequired: (value: boolean) => void;
+  claimTtl: number;
+  setClaimTtl: (value: number) => void;
+  claimMaxRedemptions: number;
+  setClaimMaxRedemptions: (value: number) => void;
+  createAdSystem: (event: FormEvent) => void;
+  newClaimUrl: string;
+  copy: (value: string) => void;
+  scriptNames: (ids: string[]) => string;
+  generateTicket: (campaign: ClaimCampaign) => void;
+  toggleCampaign: (campaign: ClaimCampaign) => void;
+  deleteCampaign: (campaign: ClaimCampaign) => void;
+}) {
+  return (
+    <div className="grid gap-5">
+      <section className="grid gap-3 md:grid-cols-4">
+        {[
+          ["1", "Choose script", "Pick the protected script this link should unlock."],
+          ["2", "Attach key", "Paste an existing key from Key Inventory."],
+          ["3", "Create LootLabs link", "AegisLua calls LootLabs and locks your claim page."],
+          ["4", "Share monetized URL", "Users complete LootLabs, return to AegisLua, then see the attached key."],
+        ].map(([step, title, text]) => (
+          <article className="glass-card rounded-2xl p-4" key={step}>
+            <span className="flex size-8 items-center justify-center rounded-full bg-rose-500 text-sm font-black text-white">{step}</span>
+            <h3 className="mt-4 font-black text-white">{title}</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-400">{text}</p>
+          </article>
+        ))}
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-[500px_1fr]">
+        <Panel title="Create Ad System" meta="Monetized keys">
+          <form className="grid gap-4" onSubmit={props.createAdSystem}>
+            <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
+              Configure a checkpoint system for one script. Users complete your provider flow, return to AegisLua, then receive the existing key you attach here.
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Name"><input className={dashboardTheme.input} value={props.claimName} onChange={(event) => props.setClaimName(event.target.value)} /></Field>
+              <Field label="Integration"><input className={dashboardTheme.input} readOnly value="LootLabs" /></Field>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="LootLabs API key"><input className={dashboardTheme.input} value={props.claimApiKey} onChange={(event) => props.setClaimApiKey(event.target.value)} type="password" /></Field>
+              <SingleScriptSelect scripts={props.scripts} value={props.claimScriptIds[0] || ""} onChange={(scriptId) => props.setClaimScriptIds(scriptId ? [scriptId] : [])} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Key to deliver"><input className={dashboardTheme.input} value={props.claimDeliveryKey} onChange={(event) => props.setClaimDeliveryKey(event.target.value)} type="password" /></Field>
+              <Field label="LootLabs tasks"><input className={dashboardTheme.input} min={1} max={5} type="number" value={props.claimSteps} onChange={(event) => props.setClaimSteps(Number(event.target.value))} /></Field>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Ad tier">
+                <select className={dashboardTheme.input} value={props.claimTierId} onChange={(event) => props.setClaimTierId(Number(event.target.value))}>
+                  <option value={1}>Trending and recommended</option>
+                  <option value={2}>Gaming offers</option>
+                  <option value={3}>Profit maximization</option>
+                  <option value={4}>Software products</option>
+                </select>
+              </Field>
+              <Field label="Theme">
+                <select className={dashboardTheme.input} value={props.claimThemeId} onChange={(event) => props.setClaimThemeId(Number(event.target.value))}>
+                  <option value={1}>Classic</option>
+                  <option value={2}>Sims</option>
+                  <option value={3}>Minecraft</option>
+                  <option value={4}>GTA</option>
+                  <option value={5}>Space</option>
+                </select>
+              </Field>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Claim URL lifetime"><input className={dashboardTheme.input} min={5} type="number" value={props.claimTtl} onChange={(event) => props.setClaimTtl(Number(event.target.value))} /></Field>
+              <Field label="Max claims"><input className={dashboardTheme.input} min={1} type="number" value={props.claimMaxRedemptions} onChange={(event) => props.setClaimMaxRedemptions(Number(event.target.value))} /></Field>
+            </div>
+            <Field label="Thumbnail URL"><input className={dashboardTheme.input} value={props.claimThumbnailUrl} onChange={(event) => props.setClaimThumbnailUrl(event.target.value)} /></Field>
+            <label className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/35 px-4 py-3 text-sm text-slate-300">
+              Discord required
+              <input checked={props.claimDiscordRequired} className="size-5 accent-rose-500" onChange={(event) => props.setClaimDiscordRequired(event.target.checked)} type="checkbox" />
+            </label>
+            <button className={`${dashboardTheme.button} magnetic-button flex items-center justify-center gap-2`} type="submit">
+              <Megaphone size={16} />
+              Create ad system
+            </button>
+            {props.newClaimUrl ? <CopyBox label="Provider destination URL" value={props.newClaimUrl} copy={props.copy} /> : null}
+          </form>
+        </Panel>
+
+        <Panel title="Ad Systems" meta={`${props.campaigns.length} systems`}>
+          <div className="mb-4 grid gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm leading-6 text-slate-400">
+            <div className="flex gap-3">
+              <CheckCircle2 className="mt-0.5 shrink-0 text-rose-400" size={18} />
+              <span>Copy the LootLabs URL when available. If LootLabs fails, AegisLua shows the fallback claim URL for testing.</span>
+            </div>
+            <div className="flex gap-3">
+              <CheckCircle2 className="mt-0.5 shrink-0 text-rose-400" size={18} />
+              <span>Each successful redemption delivers the attached key and logs the claim attempt.</span>
+            </div>
+          </div>
+          <div className="grid gap-3">
+            {props.campaigns.length === 0 ? <EmptyState text="No ad systems created yet. Create one to start monetizing keys." /> : null}
+            {props.campaigns.map((campaign) => {
+              const latestTicket = props.tickets
+                .filter((ticket) => ticket.campaignId === campaign.id)
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+              return (
+                <article className={dashboardTheme.panelSoft} key={campaign.id}>
+                  <div className="flex flex-col justify-between gap-4 lg:flex-row">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Megaphone className="text-rose-500" size={18} />
+                        <strong className="text-white">{campaign.name}</strong>
+                        <Badge tone={campaign.active ? "good" : "bad"}>{campaign.active ? "Active" : "Disabled"}</Badge>
+                        <Badge>{providerLabel(campaign.provider)}</Badge>
+                        <Badge tone={campaign.apiKeyHash ? "good" : "warn"}>{campaign.apiKeyHash ? "API key set" : "No API key"}</Badge>
+                        <Badge tone={campaign.deliveryLicenseId ? "good" : "bad"}>{campaign.deliveryLicenseId ? "Key attached" : "No key"}</Badge>
+                      </div>
+                      <div className="mt-3 grid gap-2 text-sm text-slate-500 md:grid-cols-3">
+                        <span><strong className="text-slate-300">Script:</strong> {props.scriptNames(campaign.scriptIds) || "No script selected"}</span>
+                        <span><strong className="text-slate-300">Steps:</strong> {campaign.steps || 3}</span>
+                        <span><strong className="text-slate-300">Key source:</strong> Key Inventory</span>
+                        <span><strong className="text-slate-300">Claims:</strong> {campaign.maxRedemptions}</span>
+                        <span><strong className="text-slate-300">Discord:</strong> {campaign.discordRequired ? "Required" : "Off"}</span>
+                        <span><strong className="text-slate-300">URL TTL:</strong> {campaign.ticketTtlMinutes}m</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 lg:justify-end">
+                      <button className={`${dashboardTheme.button} flex items-center gap-2`} onClick={() => props.generateTicket(campaign)} type="button"><Link2 size={15} />Refresh URL</button>
+                      <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleCampaign(campaign)} type="button"><Power size={15} />{campaign.active ? "Disable" : "Enable"}</button>
+                      <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteCampaign(campaign)} type="button"><Trash2 size={15} />Remove</button>
+                    </div>
+                  </div>
+                  {latestTicket ? <CopyBox label={latestTicket.monetizedUrl ? "LootLabs URL" : "Fallback claim URL"} value={latestTicket.monetizedUrl || latestTicket.claimUrl} copy={props.copy} compact /> : null}
+                </article>
+              );
+            })}
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+function Logs({ logs, redemptions, licenses }: { logs: AuthLog[]; redemptions: ClaimRedemption[]; licenses: License[] }) {
+  const players = Array.from(new Map(logs.filter((log) => log.userId || log.username).map((log) => [log.userId || log.username, log])).values());
+  return (
+    <div className="grid gap-5 xl:grid-cols-2">
+      <Panel title="Script Executions" meta={`${logs.length} auth attempts`}>
+        <div className="grid gap-2">
+          {logs.length === 0 ? <EmptyState text="No script execution logs yet." /> : null}
+          {logs.map((log) => (
+            <div className="grid gap-2 rounded-xl border border-white/10 bg-black/35 p-3 text-sm sm:grid-cols-[160px_80px_1fr_160px]" key={log.id}>
+              <span className="text-slate-500">{new Date(log.createdAt).toLocaleString()}</span>
+              <strong className={log.ok ? "text-rose-200" : "text-zinc-500"}>{log.ok ? "Allowed" : "Denied"}</strong>
+              <span className="truncate text-slate-300">{log.username || log.userId}</span>
+              <span className="text-slate-400">{log.reason}</span>
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <Panel title="Players" meta={`${players.length} seen`}>
+        <div className="grid gap-2">
+          {players.length === 0 ? <EmptyState text="No players have executed a secured script yet." /> : null}
+          {players.map((player) => (
+            <div className="rounded-xl border border-white/10 bg-black/35 p-3 text-sm" key={player.id}>
+              <strong className="text-white">{player.username || "Unknown"}</strong>
+              <p className="mt-1 text-slate-500">User ID: {player.userId || "missing"} - Last seen {new Date(player.createdAt).toLocaleString()}</p>
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <Panel title="Claim Redemptions" meta={`${redemptions.length} attempts`}>
+        <div className="grid gap-2">
+          {redemptions.length === 0 ? <EmptyState text="No claim redemption logs yet." /> : null}
+          {redemptions.map((redemption) => (
+            <div className="grid gap-2 rounded-xl border border-white/10 bg-black/35 p-3 text-sm sm:grid-cols-[160px_80px_1fr]" key={redemption.id}>
+              <span className="text-slate-500">{new Date(redemption.createdAt).toLocaleString()}</span>
+              <strong className={redemption.ok ? "text-rose-200" : "text-zinc-500"}>{redemption.ok ? "Claimed" : "Denied"}</strong>
+              <span className="text-slate-400">{redemption.reason}</span>
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <Panel title="Recent License Users" meta={`${licenses.length} keys`}>
+        <div className="grid gap-2">
+          {licenses.map((license) => (
+            <div className="rounded-xl border border-white/10 bg-black/35 p-3 text-sm" key={license.id}>
+              <strong className="text-white">{license.label}</strong>
+              <p className="mt-1 text-slate-500">{license.users.length} users - last username {license.lastUsername || "none"}</p>
+            </div>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function ApiDocs({ scripts }: { scripts: ScriptProject[] }) {
+  const scriptSlug = scripts[0]?.slug || "your-script-id";
+  const payload = `{
+  "scriptId": "${scriptSlug}",
+  "key": "LICENSE_KEY",
+  "userId": "123456",
+  "username": "RobloxName",
+  "placeId": "123",
+  "deviceId": "executor-or-loader-device-id"
+}`;
+  const lua = `local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+local API_URL = "https://YOUR-DOMAIN.vercel.app/api/auth/validate"
+local SCRIPT_ID = "${scriptSlug}"
+
+local function validateKey(key)
+  local player = Players.LocalPlayer
+  local response = game:HttpPost(API_URL, HttpService:JSONEncode({
+    scriptId = SCRIPT_ID,
+    key = key,
+    userId = player.UserId,
+    username = player.Name,
+    placeId = game.PlaceId,
+    deviceId = gethwid and gethwid() or "missing-device-id",
+  }), "application/json")
+  return HttpService:JSONDecode(response)
+end`;
+  return (
+    <div className="grid gap-5">
+      <Panel title="Validation Endpoint" meta="POST">
+        <code className="block break-all rounded-xl bg-black/55 p-4 text-rose-100">/api/auth/validate</code>
+      </Panel>
+      <Panel title="JSON Payload">
+        <pre className="overflow-auto rounded-xl bg-black/55 p-4 text-sm text-slate-200">{payload}</pre>
+      </Panel>
+      <Panel title="Lua Example">
+        <pre className="overflow-auto rounded-xl bg-black/55 p-4 text-sm text-slate-200">{lua}</pre>
+      </Panel>
+      <Panel title="Response Rules">
+        <ul className="grid gap-2 text-sm text-slate-300">
+          <li>200 with <code className="text-rose-300">ok=true</code> means the script can run.</li>
+          <li>403 with <code className="text-rose-300">invalid_license</code>, <code className="text-rose-300">device_limit_reached</code>, or <code className="text-rose-300">license_expired</code> means block execution.</li>
+          <li>Every validation attempt is saved in Logs.</li>
+        </ul>
+      </Panel>
+    </div>
+  );
+}
+
+function MultiScriptSelect({ scripts, value, onChange }: { scripts: ScriptProject[]; value: string[]; onChange: (value: string[]) => void }) {
+  return (
+    <Field label="Scripts">
+      <select className={`${dashboardTheme.input} min-h-28`} multiple value={value} onChange={(event) => onChange(Array.from(event.target.selectedOptions).map((option) => option.value))}>
+        {scripts.map((script) => <option key={script.id} value={script.id}>{script.name}</option>)}
+      </select>
+    </Field>
+  );
+}
+
+function SingleScriptSelect({ scripts, value, onChange }: { scripts: ScriptProject[]; value: string; onChange: (value: string) => void }) {
+  return (
+    <Field label="Script to unlock">
+      <select className={dashboardTheme.input} value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">Choose a script</option>
+        {scripts.map((script) => <option key={script.id} value={script.id}>{script.name}</option>)}
+      </select>
+    </Field>
+  );
+}
+
+function providerLabel(provider: ClaimCampaign["provider"]) {
+  const labels: Record<ClaimCampaign["provider"], string> = {
+    lootlabs: "LootLabs",
+  };
+  return labels[provider] || provider;
+}
+
+function loaderSnippetFor(scriptSlug: string) {
+  const origin = typeof window === "undefined" ? "https://YOUR-DOMAIN.vercel.app" : window.location.origin;
+  return `loadstring(game:HttpGet("${origin}/api/loader/${encodeURIComponent(scriptSlug)}"))()`;
+}
+
+function KeyBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm">
+      <span className="text-slate-300">{label}</span>
+      <code className="mt-2 block break-all text-rose-100">{value}</code>
+    </div>
+  );
+}
+
+function CopyBox({ label, value, copy, compact = false }: { label: string; value: string; copy: (value: string) => void; compact?: boolean }) {
+  return (
+    <div className={`${compact ? "mt-4" : ""} rounded-xl border border-rose-400/30 bg-rose-500/10 p-4`}>
+      <span className="text-sm font-bold text-rose-100">{label}</span>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+        <code className="min-w-0 flex-1 break-all rounded-lg bg-black/55 p-3 text-sm text-rose-100">{value}</code>
+        <button className={dashboardTheme.ghostButton} onClick={() => copy(value)} type="button">Copy</button>
+      </div>
+    </div>
+  );
+}
+
+function makeDailyPoints(dates: string[]) {
+  const now = new Date();
+  const points = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(now);
+    date.setDate(now.getDate() - (6 - index));
+    const key = date.toISOString().slice(0, 10);
+    return { key, label: date.toLocaleDateString("en-US", { weekday: "short" }), value: 0 };
+  });
+  const byKey = new Map(points.map((point) => [point.key, point]));
+  for (const raw of dates) {
+    const key = new Date(raw).toISOString().slice(0, 10);
+    const point = byKey.get(key);
+    if (point) point.value += 1;
+  }
+  return points.map(({ label, value }) => ({ label, value }));
+}
+
+function slugifyClient(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64) || "new-script";
+}
