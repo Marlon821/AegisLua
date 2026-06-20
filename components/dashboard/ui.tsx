@@ -5,11 +5,11 @@ import { AnimatedNumber } from "@/components/motion";
 
 export const dashboardTheme = {
   page: "min-h-screen bg-transparent text-slate-100",
-  sidebar: "border-b border-white/10 bg-black/70 p-5 backdrop-blur-2xl lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r",
-  panel: "glass-card rounded-2xl p-5",
-  panelSoft: "rounded-2xl border border-white/10 bg-black/35 p-4 shadow-inner shadow-white/[0.02]",
+  sidebar: "border-b border-white/10 bg-black/80 p-4 backdrop-blur-2xl xl:sticky xl:top-0 xl:h-screen xl:border-b-0 xl:border-r",
+  panel: "glass-card rounded-2xl p-5 sm:p-6",
+  panelSoft: "rounded-2xl border border-white/10 bg-black/40 p-4 shadow-inner shadow-white/[0.02]",
   input:
-    "w-full rounded-xl border border-white/10 bg-black/45 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-rose-400",
+    "w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-rose-400 focus:ring-2 focus:ring-rose-500/10",
   button:
     "rounded-xl bg-rose-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-rose-950/30 transition hover:-translate-y-0.5 hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50",
   ghostButton:
@@ -32,9 +32,9 @@ export function Panel({
 }) {
   return (
     <section className={dashboardTheme.panel} id={id}>
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <h2 className="text-xl font-black text-white">{title}</h2>
-        {meta ? <span className="text-sm text-slate-400">{meta}</span> : null}
+      <div className="mb-5 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <h2 className="text-lg font-black text-white sm:text-xl">{title}</h2>
+        {meta ? <span className="text-sm text-slate-500">{meta}</span> : null}
       </div>
       {children}
     </section>
@@ -45,7 +45,7 @@ export function StatCard({ label, value, hint }: { label: string; value: string 
   return (
     <article className="animate-rise glass-card rounded-2xl p-5 transition hover:-translate-y-1">
       <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</span>
-      <strong className="mt-4 block text-4xl font-black text-white">
+      <strong className="mt-4 block text-3xl font-black text-white sm:text-4xl">
         {typeof value === "number" ? <AnimatedNumber value={value} /> : value}
       </strong>
       {hint ? <p className="mt-2 text-xs text-slate-500">{hint}</p> : null}
@@ -88,11 +88,11 @@ export function Tabs({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="grid gap-2 text-sm text-slate-300">
+    <div className="flex gap-2 overflow-x-auto pb-1 text-sm text-slate-300 xl:grid xl:overflow-visible xl:pb-0">
       {tabs.map((tab) => (
         <button
-          className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left font-semibold capitalize transition ${
-            active === tab.id ? "border border-rose-500/50 bg-rose-950/45 text-rose-100" : "hover:bg-white/10 hover:text-white"
+          className={`flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left font-semibold capitalize transition ${
+            active === tab.id ? "border border-rose-500/50 bg-rose-950/45 text-rose-100 shadow-lg shadow-rose-950/10" : "hover:bg-white/10 hover:text-white"
           }`}
           key={tab.id}
           onClick={() => onChange(tab.id)}
@@ -133,5 +133,5 @@ export function MiniBarChart({ points, label }: { points: Array<{ label: string;
 }
 
 export function EmptyState({ text }: { text: string }) {
-  return <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/40 p-5 text-sm text-slate-500">{text}</div>;
+  return <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-8 text-center text-sm text-slate-500">{text}</div>;
 }

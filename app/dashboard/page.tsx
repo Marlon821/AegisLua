@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   Activity,
   BarChart3,
-  CheckCircle2,
   Code2,
   Copy,
   FileCode2,
@@ -106,12 +105,55 @@ const tabs = [
   { id: "overview", label: "Overview", icon: BarChart3 },
   { id: "scripts", label: "Scripts", icon: FileCode2 },
   { id: "keys", label: "Keys", icon: KeyRound },
-  { id: "auto", label: "Auto Key Gen", icon: Wand2 },
+  { id: "auto", label: "Auto Keys", icon: Wand2 },
   { id: "deployment", label: "Ad Systems", icon: Megaphone },
   { id: "logs", label: "Logs", icon: Activity },
   { id: "users", label: "Users", icon: Users, ownerOnly: true },
   { id: "api", label: "Advanced", icon: Code2 },
 ];
+
+const tabMeta: Record<string, { eyebrow: string; title: string; description: string }> = {
+  overview: {
+    eyebrow: "Command center",
+    title: "Overview",
+    description: "A quick read on executions, keys, claims, revenue estimates, and recent growth.",
+  },
+  scripts: {
+    eyebrow: "Protection",
+    title: "Scripts",
+    description: "Upload Lua files, create protected loaders, and manage each script's public loadstring.",
+  },
+  keys: {
+    eyebrow: "Access",
+    title: "Keys",
+    description: "Create, reveal, disable, and remove long-term keys attached to your protected scripts.",
+  },
+  auto: {
+    eyebrow: "Automation",
+    title: "Auto Keys",
+    description: "Create rotating public keys for ad flows, communities, and short-term access.",
+  },
+  deployment: {
+    eyebrow: "Monetization",
+    title: "Ad Systems",
+    description: "Connect existing keys to LootLabs claim links and track claim URLs.",
+  },
+  logs: {
+    eyebrow: "Monitoring",
+    title: "Logs",
+    description: "Inspect script executions, claim redemptions, and recently seen players.",
+  },
+  users: {
+    eyebrow: "Owner tools",
+    title: "Users",
+    description: "Manage site accounts, roles, plans, and subscription status.",
+  },
+  api: {
+    eyebrow: "Developer mode",
+    title: "Advanced",
+    description: "Optional low-level API details for custom integrations.",
+  },
+};
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -396,52 +438,52 @@ export default function DashboardPage() {
   }
 
   const visibleTabs = tabs.filter((tab) => !tab.ownerOnly || user.role === "owner");
+  const currentTab = tabMeta[activeTab] || tabMeta.overview;
 
   return (
-    <InteractiveShell className={`${dashboardTheme.page} lg:grid lg:grid-cols-[290px_1fr]`}>
+    <InteractiveShell className={`${dashboardTheme.page} xl:grid xl:grid-cols-[280px_1fr]`}>
       <aside className={dashboardTheme.sidebar}>
-        <Link className="mb-8 flex items-center gap-3" href="/">
-          <Shield className="text-rose-500" size={18} />
-          <div>
-            <strong className="brand-word block text-sm text-white">AEGISLUA</strong>
-            <span className="text-xs text-slate-400">{user.email}</span>
-          </div>
-        </Link>
+        <div className="flex flex-col gap-5 xl:h-full">
+          <Link className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3" href="/">
+            <span className="grid size-10 place-items-center rounded-xl bg-rose-500/10">
+              <Shield className="text-rose-500" size={18} />
+            </span>
+            <div className="min-w-0">
+              <strong className="brand-word block text-sm text-white">AEGISLUA</strong>
+              <span className="block truncate text-xs text-slate-500">{user.email}</span>
+            </div>
+          </Link>
         <Tabs tabs={visibleTabs} active={activeTab} onChange={setActiveTab} />
-        <button className={`${dashboardTheme.ghostButton} mt-6 w-full`} onClick={logout} type="button">Logout</button>
+          <div className="mt-auto hidden rounded-2xl border border-white/10 bg-black/35 p-4 xl:block">
+            <span className="text-xs uppercase tracking-[0.18em] text-slate-600">Session</span>
+            <p className="mt-2 text-sm text-slate-300">{user.name}</p>
+            <Badge tone={user.role === "owner" ? "good" : "neutral"}>{user.role}</Badge>
+            <button className={`${dashboardTheme.ghostButton} mt-4 w-full`} onClick={logout} type="button">Logout</button>
+          </div>
+        </div>
       </aside>
 
-      <section className="p-5 sm:p-8">
-        <header className="mb-8 glass-card rounded-3xl p-5 sm:p-6">
-          <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
+      <section className="min-w-0">
+        <header className="sticky top-0 z-30 border-b border-white/10 bg-black/75 px-5 py-4 backdrop-blur-2xl sm:px-8">
+          <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 lg:flex-row lg:items-center">
             <div>
-              <p className="font-mono text-xs font-black uppercase tracking-[0.28em] text-rose-500">AegisLua Control Center</p>
-              <h1 className="mt-2 text-4xl font-black text-white">{visibleTabs.find((tab) => tab.id === activeTab)?.label}</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-                Manage protected scripts, long-term keys, rotating public keys, ad systems, and validation logs from one place.
-              </p>
+              <p className="font-mono text-xs font-black uppercase tracking-[0.24em] text-rose-500">{currentTab.eyebrow}</p>
+              <h1 className="mt-1 text-3xl font-black text-white sm:text-4xl">{currentTab.title}</h1>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{currentTab.description}</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[520px]">
-              <div className={dashboardTheme.panelSoft}>
-                <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Scripts</span>
-                <strong className="mt-2 block text-2xl text-white">{scripts.length}</strong>
-              </div>
-              <div className={dashboardTheme.panelSoft}>
-                <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Keys</span>
-                <strong className="mt-2 block text-2xl text-white">{licenses.length}</strong>
-              </div>
-              <div className={dashboardTheme.panelSoft}>
-                <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Ad Systems</span>
-                <strong className="mt-2 block text-2xl text-white">{campaigns.length}</strong>
-              </div>
+            <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-2 lg:min-w-[390px]">
+              <MiniMetric label="Scripts" value={scripts.length} />
+              <MiniMetric label="Keys" value={licenses.length} />
+              <MiniMetric label="Ads" value={campaigns.length} />
             </div>
           </div>
         </header>
 
-        {error ? <div className="mb-6 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
-        {notice ? <div className="mb-6 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">{notice}</div> : null}
+        <main className="mx-auto max-w-7xl p-5 sm:p-8">
+        {error ? <div className="mb-5 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
+        {notice ? <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">{notice}</div> : null}
 
-        <Reveal className="tab-motion" key={activeTab}>
+        <Reveal className="tab-motion min-w-0" key={activeTab}>
           {activeTab === "overview" ? (
             <Overview
               stats={{ uniquePlayers, keysGenerated, completedClaims, estimatedRevenue, boundDevices }}
@@ -570,6 +612,7 @@ export default function DashboardPage() {
           ) : null}
           {activeTab === "api" ? <ApiDocs scripts={scripts} /> : null}
         </Reveal>
+        </main>
       </section>
     </InteractiveShell>
   );
@@ -601,6 +644,15 @@ function Overview({
   );
 }
 
+function MiniMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl bg-black/35 px-3 py-2 text-center">
+      <span className="block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-600">{label}</span>
+      <strong className="mt-1 block text-lg text-white">{value}</strong>
+    </div>
+  );
+}
+
 function ScriptManagement(props: {
   scripts: ScriptProject[];
   logs: AuthLog[];
@@ -617,6 +669,7 @@ function ScriptManagement(props: {
   deleteScript: (script: ScriptProject) => void;
 }) {
   const generatedId = slugifyClient(props.scriptName);
+  const [creating, setCreating] = useState(false);
   async function readScriptFile(file: File | undefined) {
     if (!file) return;
     const lowerName = file.name.toLowerCase();
@@ -633,9 +686,75 @@ function ScriptManagement(props: {
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[500px_1fr]">
-      <Panel title="Protect a Script" meta="Upload source">
-        <form className="grid gap-4" onSubmit={props.createScript}>
+    <div className="grid gap-5">
+      <Panel title="Script Library" meta={`${props.scripts.length} protected`}>
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+          <p className="max-w-2xl text-sm leading-6 text-slate-400">
+            Each script gets a hosted loadstring that prompts for a key, validates server-side, then releases the protected source.
+          </p>
+          <button className={`${dashboardTheme.button} flex items-center justify-center gap-2`} onClick={() => setCreating(true)} type="button">
+            <Upload size={16} />
+            Protect script
+          </button>
+        </div>
+        {props.newLoaderSnippet ? <CopyBox label="Newest protected loader" value={props.newLoaderSnippet} copy={props.copy} compact /> : null}
+      </Panel>
+
+      <div className="grid gap-4">
+        {props.scripts.length === 0 ? <EmptyState text="No scripts yet. Protect a Lua file to generate your first loader." /> : null}
+        {props.scripts.map((script) => {
+          const runs = props.logs.filter((log) => log.ok && log.scriptId === script.id).length;
+          return (
+            <article className="glass-card rounded-2xl p-5" key={script.id}>
+              <div className="grid gap-5 xl:grid-cols-[1fr_auto]">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <FileCode2 className="text-rose-500" size={18} />
+                    <strong className="text-lg text-white">{script.name}</strong>
+                    <Badge tone={script.active ? "good" : "bad"}>{script.active ? "Active" : "Disabled"}</Badge>
+                    <Badge>{script.sourceBytes ? `${Math.ceil(script.sourceBytes / 1024)} KB` : "No source"}</Badge>
+                  </div>
+                  <div className="mt-4 grid gap-3 lg:grid-cols-[260px_1fr]">
+                    <div className="rounded-xl border border-white/10 bg-black/35 p-3">
+                      <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">Script ID</span>
+                      <code className="mt-1 block break-all text-sm text-rose-300">{script.slug}</code>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/35 p-3">
+                      <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">Loader</span>
+                      <code className="mt-1 block break-all text-xs text-rose-200">{loaderSnippetFor(script.slug)}</code>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm text-slate-500">{runs} successful executions tracked.</p>
+                </div>
+                <div className="flex flex-wrap gap-2 xl:max-w-[190px] xl:justify-end">
+                  <button className={`${dashboardTheme.button} flex items-center gap-2`} onClick={() => props.copy(loaderSnippetFor(script.slug))} type="button">
+                    <Copy size={15} />
+                    Copy loader
+                  </button>
+                  <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.copy(script.slug)} type="button">Copy ID</button>
+                  <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleScript(script)} type="button">
+                    <Power size={15} />
+                    {script.active ? "Disable" : "Enable"}
+                  </button>
+                  <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteScript(script)} type="button">
+                    <Trash2 size={15} />
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <Modal open={creating} title="Protect a Script" onClose={() => setCreating(false)}>
+        <form
+          className="grid gap-4"
+          onSubmit={(event) => {
+            props.createScript(event);
+            setCreating(false);
+          }}
+        >
           <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
             Upload a .lua or .luau file. AegisLua stores the source encrypted and gives you a hosted loadstring that opens a key prompt before the script can run.
           </div>
@@ -681,58 +800,8 @@ function ScriptManagement(props: {
             <Plus size={16} />
             Add script
           </button>
-          {props.newLoaderSnippet ? <CopyBox label="Protected loader, shown once" value={props.newLoaderSnippet} copy={props.copy} /> : null}
         </form>
-      </Panel>
-      <Panel title="Protected Scripts" meta={`${props.scripts.length} total`}>
-        <div className="grid gap-3">
-          {props.scripts.length === 0 ? <EmptyState text="No scripts yet. Add one to start validating keys." /> : null}
-          {props.scripts.map((script) => {
-            const runs = props.logs.filter((log) => log.ok && log.scriptId === script.id).length;
-            return (
-              <article className={dashboardTheme.panelSoft} key={script.id}>
-                <div className="flex flex-col justify-between gap-4 lg:flex-row">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <FileCode2 className="text-rose-500" size={18} />
-                      <strong className="text-white">{script.name}</strong>
-                      <Badge tone={script.active ? "good" : "bad"}>{script.active ? "Active" : "Disabled"}</Badge>
-                    </div>
-                    <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-black/30 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
-                      <div>
-                        <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">Script ID</span>
-                        <code className="mt-1 block break-all text-sm text-rose-300">{script.slug}</code>
-                      </div>
-                      <button className={dashboardTheme.ghostButton} onClick={() => props.copy(script.slug)} type="button">Copy ID</button>
-                    </div>
-                    <p className="mt-3 text-sm text-slate-500">
-                      {runs} successful executions tracked. {script.sourceBytes ? `${Math.ceil(script.sourceBytes / 1024)} KB protected source stored.` : "No source uploaded yet."}
-                    </p>
-                    <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
-                      <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">Loader</span>
-                      <code className="mt-2 block break-all text-xs text-rose-200">{loaderSnippetFor(script.slug)}</code>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button className={`${dashboardTheme.button} flex items-center gap-2`} onClick={() => props.copy(loaderSnippetFor(script.slug))} type="button">
-                      <Copy size={15} />
-                      Copy loader
-                    </button>
-                    <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleScript(script)} type="button">
-                      <Power size={15} />
-                      {script.active ? "Disable" : "Enable"}
-                    </button>
-                    <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteScript(script)} type="button">
-                      <Trash2 size={15} />
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </Panel>
+      </Modal>
     </div>
   );
 }
@@ -881,10 +950,63 @@ function AutoKeyManagement(props: {
   toggleRule: (rule: AutoKeyRule) => void;
   deleteRule: (rule: AutoKeyRule) => void;
 }) {
+  const [creating, setCreating] = useState(false);
   return (
-    <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
-      <Panel title="Create Rotating Public Key Rule" meta="Shared access">
-        <form className="grid gap-4" onSubmit={props.createAutoRule}>
+    <div className="grid gap-5">
+      <Panel title="Auto Key Rules" meta={`${props.rules.length} rules`}>
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+          <p className="max-w-2xl text-sm leading-6 text-slate-400">
+            Generate short-term shared keys on a schedule, then manage every generated key from the Key Inventory.
+          </p>
+          <button className={`${dashboardTheme.button} flex items-center justify-center gap-2`} onClick={() => setCreating(true)} type="button">
+            <Wand2 size={16} />
+            New rule
+          </button>
+        </div>
+        {props.newAutoKey ? (
+          <div className="mt-4 grid gap-3">
+            <KeyBox label="Generated short-term key" value={props.newAutoKey} />
+            <button className={dashboardTheme.ghostButton} onClick={props.openKeyInventory} type="button">View it in Key Inventory</button>
+          </div>
+        ) : null}
+      </Panel>
+
+      <div className="grid gap-4">
+        {props.rules.length === 0 ? <EmptyState text="No auto key rules yet. Create one for rotating weekly or daily keys." /> : null}
+        {props.rules.map((rule) => (
+          <article className="glass-card rounded-2xl p-5" key={rule.id}>
+            <div className="grid gap-4 xl:grid-cols-[1fr_auto]">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Wand2 className="text-rose-500" size={18} />
+                  <strong className="text-lg text-white">{rule.name}</strong>
+                  <Badge tone={rule.active ? "good" : "bad"}>{rule.active ? "Active" : "Paused"}</Badge>
+                  <Badge>Every {rule.intervalCount} {rule.intervalUnit}</Badge>
+                </div>
+                <div className="mt-3 grid gap-2 text-sm text-slate-500 md:grid-cols-3">
+                  <span><strong className="text-slate-300">Scripts:</strong> {props.scriptNames(rule.scriptIds) || "No scripts assigned"}</span>
+                  <span><strong className="text-slate-300">Next run:</strong> {new Date(rule.nextRunAt).toLocaleString()}</span>
+                  <span><strong className="text-slate-300">Last generated:</strong> {rule.lastGeneratedAt ? new Date(rule.lastGeneratedAt).toLocaleString() : "Never"}</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 xl:justify-end">
+                <button className={`${dashboardTheme.button} flex items-center gap-2`} onClick={() => props.generateNow(rule)} type="button"><KeyRound size={15} />Generate</button>
+                <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleRule(rule)} type="button"><Power size={15} />{rule.active ? "Pause" : "Enable"}</button>
+                <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteRule(rule)} type="button"><Trash2 size={15} />Delete</button>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <Modal open={creating} title="Create Auto Key Rule" onClose={() => setCreating(false)}>
+        <form
+          className="grid gap-4"
+          onSubmit={(event) => {
+            props.createAutoRule(event);
+            setCreating(false);
+          }}
+        >
           <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
             Auto key rules generate one shared short-term key on a schedule. Each generated key is saved into Key Inventory automatically, so you can disable, enable, or remove it later.
           </div>
@@ -905,39 +1027,8 @@ function AutoKeyManagement(props: {
             <Wand2 size={16} />
             Create auto rule
           </button>
-          {props.newAutoKey ? (
-            <div className="grid gap-3">
-              <KeyBox label="Generated short-term key, shown once" value={props.newAutoKey} />
-              <button className={dashboardTheme.ghostButton} onClick={props.openKeyInventory} type="button">View it in Key Inventory</button>
-            </div>
-          ) : null}
         </form>
-      </Panel>
-      <Panel title="Short-Term Key Rules" meta={`${props.rules.length} rules`}>
-        <div className="grid gap-3">
-          {props.rules.length === 0 ? <EmptyState text="No auto key rules yet. Create one for rotating weekly or daily keys." /> : null}
-          {props.rules.map((rule) => (
-            <article className={dashboardTheme.panelSoft} key={rule.id}>
-              <div className="flex flex-col justify-between gap-3 lg:flex-row">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <strong className="text-white">{rule.name}</strong>
-                    <Badge tone={rule.active ? "good" : "bad"}>{rule.active ? "Active" : "Paused"}</Badge>
-                  </div>
-                  <p className="mt-2 text-sm text-slate-400">{props.scriptNames(rule.scriptIds) || "No scripts assigned"}</p>
-                  <p className="mt-1 text-sm text-slate-500">Shared key. Every {rule.intervalCount} {rule.intervalUnit}. Next: {new Date(rule.nextRunAt).toLocaleString()}</p>
-                  <p className="mt-1 text-sm text-slate-500">Last generated: {rule.lastGeneratedAt ? new Date(rule.lastGeneratedAt).toLocaleString() : "never"}</p>
-                </div>
-                <div className="flex flex-wrap gap-2 lg:justify-end">
-                  <button className={`${dashboardTheme.button} flex items-center gap-2`} onClick={() => props.generateNow(rule)} type="button"><KeyRound size={15} />Generate now</button>
-                  <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleRule(rule)} type="button"><Power size={15} />{rule.active ? "Pause" : "Enable"}</button>
-                  <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteRule(rule)} type="button"><Trash2 size={15} />Delete</button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </Panel>
+      </Modal>
     </div>
   );
 }
@@ -977,9 +1068,10 @@ function AdSystems(props: {
   toggleCampaign: (campaign: ClaimCampaign) => void;
   deleteCampaign: (campaign: ClaimCampaign) => void;
 }) {
+  const [creating, setCreating] = useState(false);
   return (
     <div className="grid gap-5">
-      <section className="grid gap-3 md:grid-cols-4">
+      <section className="grid gap-3 lg:grid-cols-4">
         {[
           ["1", "Choose script", "Pick the protected script this link should unlock."],
           ["2", "Attach key", "Paste an existing key from Key Inventory."],
@@ -994,9 +1086,67 @@ function AdSystems(props: {
         ))}
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[500px_1fr]">
-        <Panel title="Create Ad System" meta="Monetized keys">
-          <form className="grid gap-4" onSubmit={props.createAdSystem}>
+      <Panel title="Ad Systems" meta={`${props.campaigns.length} systems`}>
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+          <div>
+            <p className="max-w-2xl text-sm leading-6 text-slate-400">
+              Build LootLabs links that return users to AegisLua and reveal an existing key from your inventory.
+            </p>
+          </div>
+          <button className={`${dashboardTheme.button} flex items-center justify-center gap-2`} onClick={() => setCreating(true)} type="button">
+            <Megaphone size={16} />
+            New ad system
+          </button>
+        </div>
+        {props.newClaimUrl ? <CopyBox label="Newest provider destination URL" value={props.newClaimUrl} copy={props.copy} compact /> : null}
+      </Panel>
+
+      <div className="grid gap-4">
+        {props.campaigns.length === 0 ? <EmptyState text="No ad systems created yet. Create one to start monetizing keys." /> : null}
+        {props.campaigns.map((campaign) => {
+          const latestTicket = props.tickets
+            .filter((ticket) => ticket.campaignId === campaign.id)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+          return (
+            <article className="glass-card rounded-2xl p-5" key={campaign.id}>
+              <div className="grid gap-4 xl:grid-cols-[1fr_auto]">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Megaphone className="text-rose-500" size={18} />
+                    <strong className="text-lg text-white">{campaign.name}</strong>
+                    <Badge tone={campaign.active ? "good" : "bad"}>{campaign.active ? "Active" : "Disabled"}</Badge>
+                    <Badge>{providerLabel(campaign.provider)}</Badge>
+                    <Badge tone={campaign.deliveryLicenseId ? "good" : "bad"}>{campaign.deliveryLicenseId ? "Key attached" : "No key"}</Badge>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-sm text-slate-500 md:grid-cols-3">
+                    <span><strong className="text-slate-300">Script:</strong> {props.scriptNames(campaign.scriptIds) || "No script selected"}</span>
+                    <span><strong className="text-slate-300">Steps:</strong> {campaign.steps || 3}</span>
+                    <span><strong className="text-slate-300">URL TTL:</strong> {campaign.ticketTtlMinutes}m</span>
+                    <span><strong className="text-slate-300">Claims:</strong> {campaign.maxRedemptions}</span>
+                    <span><strong className="text-slate-300">Discord:</strong> {campaign.discordRequired ? "Required" : "Off"}</span>
+                    <span><strong className="text-slate-300">API:</strong> {campaign.apiKeyHash ? "Connected" : "Missing"}</span>
+                  </div>
+                  {latestTicket ? <CopyBox label={latestTicket.monetizedUrl ? "LootLabs URL" : "Fallback claim URL"} value={latestTicket.monetizedUrl || latestTicket.claimUrl} copy={props.copy} compact /> : null}
+                </div>
+                <div className="flex flex-wrap gap-2 xl:justify-end">
+                  <button className={`${dashboardTheme.button} flex items-center gap-2`} onClick={() => props.generateTicket(campaign)} type="button"><Link2 size={15} />Refresh URL</button>
+                  <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleCampaign(campaign)} type="button"><Power size={15} />{campaign.active ? "Disable" : "Enable"}</button>
+                  <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteCampaign(campaign)} type="button"><Trash2 size={15} />Remove</button>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <Modal open={creating} title="Create Ad System" onClose={() => setCreating(false)}>
+          <form
+            className="grid gap-4"
+            onSubmit={(event) => {
+              props.createAdSystem(event);
+              setCreating(false);
+            }}
+          >
             <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
               Configure a checkpoint system for one script. Users complete your provider flow, return to AegisLua, then receive the existing key you attach here.
             </div>
@@ -1044,61 +1194,8 @@ function AdSystems(props: {
               <Megaphone size={16} />
               Create ad system
             </button>
-            {props.newClaimUrl ? <CopyBox label="Provider destination URL" value={props.newClaimUrl} copy={props.copy} /> : null}
           </form>
-        </Panel>
-
-        <Panel title="Ad Systems" meta={`${props.campaigns.length} systems`}>
-          <div className="mb-4 grid gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm leading-6 text-slate-400">
-            <div className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 shrink-0 text-rose-400" size={18} />
-              <span>Copy the LootLabs URL when available. If LootLabs fails, AegisLua shows the fallback claim URL for testing.</span>
-            </div>
-            <div className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 shrink-0 text-rose-400" size={18} />
-              <span>Each successful redemption delivers the attached key and logs the claim attempt.</span>
-            </div>
-          </div>
-          <div className="grid gap-3">
-            {props.campaigns.length === 0 ? <EmptyState text="No ad systems created yet. Create one to start monetizing keys." /> : null}
-            {props.campaigns.map((campaign) => {
-              const latestTicket = props.tickets
-                .filter((ticket) => ticket.campaignId === campaign.id)
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-              return (
-                <article className={dashboardTheme.panelSoft} key={campaign.id}>
-                  <div className="flex flex-col justify-between gap-4 lg:flex-row">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Megaphone className="text-rose-500" size={18} />
-                        <strong className="text-white">{campaign.name}</strong>
-                        <Badge tone={campaign.active ? "good" : "bad"}>{campaign.active ? "Active" : "Disabled"}</Badge>
-                        <Badge>{providerLabel(campaign.provider)}</Badge>
-                        <Badge tone={campaign.apiKeyHash ? "good" : "warn"}>{campaign.apiKeyHash ? "API key set" : "No API key"}</Badge>
-                        <Badge tone={campaign.deliveryLicenseId ? "good" : "bad"}>{campaign.deliveryLicenseId ? "Key attached" : "No key"}</Badge>
-                      </div>
-                      <div className="mt-3 grid gap-2 text-sm text-slate-500 md:grid-cols-3">
-                        <span><strong className="text-slate-300">Script:</strong> {props.scriptNames(campaign.scriptIds) || "No script selected"}</span>
-                        <span><strong className="text-slate-300">Steps:</strong> {campaign.steps || 3}</span>
-                        <span><strong className="text-slate-300">Key source:</strong> Key Inventory</span>
-                        <span><strong className="text-slate-300">Claims:</strong> {campaign.maxRedemptions}</span>
-                        <span><strong className="text-slate-300">Discord:</strong> {campaign.discordRequired ? "Required" : "Off"}</span>
-                        <span><strong className="text-slate-300">URL TTL:</strong> {campaign.ticketTtlMinutes}m</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 lg:justify-end">
-                      <button className={`${dashboardTheme.button} flex items-center gap-2`} onClick={() => props.generateTicket(campaign)} type="button"><Link2 size={15} />Refresh URL</button>
-                      <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleCampaign(campaign)} type="button"><Power size={15} />{campaign.active ? "Disable" : "Enable"}</button>
-                      <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteCampaign(campaign)} type="button"><Trash2 size={15} />Remove</button>
-                    </div>
-                  </div>
-                  {latestTicket ? <CopyBox label={latestTicket.monetizedUrl ? "LootLabs URL" : "Fallback claim URL"} value={latestTicket.monetizedUrl || latestTicket.claimUrl} copy={props.copy} compact /> : null}
-                </article>
-              );
-            })}
-          </div>
-        </Panel>
-      </div>
+      </Modal>
     </div>
   );
 }
@@ -1393,7 +1490,7 @@ function Modal({ open, title, children, onClose }: { open: boolean; title: strin
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-xl">
-      <section className="glass-card modal-pop w-full max-w-2xl rounded-3xl p-5">
+      <section className="glass-card modal-pop max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl p-5">
         <div className="mb-5 flex items-center justify-between gap-4">
           <h2 className="text-2xl font-black text-white">{title}</h2>
           <button className={dashboardTheme.ghostButton} onClick={onClose} type="button">Close</button>
