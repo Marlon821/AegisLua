@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isOwnerEmail, requireOwner } from "@/lib/admin";
-import { getUser, listUsers, saveUser } from "@/lib/store";
+import { deleteUser, getUser, listUsers, saveUser } from "@/lib/store";
 import { UserAccount } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -74,4 +74,26 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   user.updatedAt = new Date().toISOString();
   await saveUser(user);
   return NextResponse.json({ user: publicUser(user) });
+}
+
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const owner = await requireOwner(request);
+  if (!owner) {
+    return NextResponse.json({ error: "Owner access required" }, { status: 401 });
+  }
+
+  const { id } = await context.params;
+  const user = await getUser(id);
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+  if (user.id === owner.id) {
+    return NextResponse.json({ error: "You cannot delete your own owner account." }, { status: 400 });
+  }
+  if (user.role === "owner" && !(await hasAnotherOwner(user.id))) {
+    return NextResponse.json({ error: "Create another owner before deleting this account." }, { status: 400 });
+  }
+
+  await deleteUser(user.id);
+  return NextResponse.json({ ok: true });
 }

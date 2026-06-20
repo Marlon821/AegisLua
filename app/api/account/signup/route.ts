@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     await saveUser(user);
 
     const token = createSessionToken();
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString();
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 60).toISOString();
     await saveSession({
       id: hashSessionToken(token),
       userId: user.id,

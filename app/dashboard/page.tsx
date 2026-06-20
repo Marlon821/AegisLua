@@ -108,7 +108,7 @@ const tabs = [
   { id: "auto", label: "Auto Keys", icon: Wand2 },
   { id: "deployment", label: "Ad Systems", icon: Megaphone },
   { id: "logs", label: "Logs", icon: Activity },
-  { id: "users", label: "Users", icon: Users, ownerOnly: true },
+  { id: "owner", label: "Owner", icon: Users, ownerOnly: true },
   { id: "api", label: "Advanced", icon: Code2 },
 ];
 
@@ -143,10 +143,10 @@ const tabMeta: Record<string, { eyebrow: string; title: string; description: str
     title: "Logs",
     description: "Inspect script executions, claim redemptions, and recently seen players.",
   },
-  users: {
+  owner: {
     eyebrow: "Owner tools",
-    title: "Users",
-    description: "Manage site accounts, roles, plans, and subscription status.",
+    title: "Owner Console",
+    description: "Manage accounts, subscriptions, and review every script and key across the site.",
   },
   api: {
     eyebrow: "Developer mode",
@@ -409,7 +409,12 @@ export default function DashboardPage() {
   async function remove(url: string, success: string) {
     setError("");
     setNotice("");
-    await fetch(url, { method: "DELETE" });
+    const response = await fetch(url, { method: "DELETE" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setError(payload.error || "Delete failed.");
+      return;
+    }
     setNotice(success);
     await loadData();
   }
@@ -426,15 +431,7 @@ export default function DashboardPage() {
   if (!user) return <main className="grid min-h-screen place-items-center text-slate-300">Loading AegisLua...</main>;
 
   if (user.role === "customer") {
-    return (
-      <main className="grid min-h-screen place-items-center px-6">
-        <section className="glass-card max-w-2xl rounded-3xl p-8 text-center">
-          <h1 className="text-4xl font-black text-white">Customer portal</h1>
-          <p className="mt-4 text-slate-300">Owner/admin access is required to manage scripts, keys, and deployments.</p>
-          <button className={`${dashboardTheme.button} mt-6`} onClick={logout} type="button">Logout</button>
-        </section>
-      </main>
-    );
+    return <CustomerPortal user={user} logout={logout} />;
   }
 
   const visibleTabs = tabs.filter((tab) => !tab.ownerOnly || user.role === "owner");
@@ -603,17 +600,64 @@ export default function DashboardPage() {
           ) : null}
 
           {activeTab === "logs" ? <Logs logs={logs} redemptions={redemptions} licenses={licenses} /> : null}
-          {activeTab === "users" && user.role === "owner" ? (
+          {activeTab === "owner" && user.role === "owner" ? (
             <UserManagement
               users={managedUsers}
+              scripts={scripts}
+              licenses={licenses}
               currentUserId={user.id}
               updateUser={(target, body) => patch(`/api/admin/users/${target.id}`, body, "User updated.")}
+              deleteUser={(target) => remove(`/api/admin/users/${target.id}`, "User deleted.")}
+              scriptNames={scriptNames}
             />
           ) : null}
           {activeTab === "api" ? <ApiDocs scripts={scripts} /> : null}
         </Reveal>
         </main>
       </section>
+    </InteractiveShell>
+  );
+}
+
+function CustomerPortal({ user, logout }: { user: AppUser; logout: () => void }) {
+  return (
+    <InteractiveShell className={`${dashboardTheme.page} min-h-screen`}>
+      <main className="mx-auto grid min-h-screen max-w-6xl content-center gap-5 px-6 py-10">
+        <section className="glass-card rounded-3xl p-6 sm:p-8">
+          <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
+            <div>
+              <p className="font-mono text-xs font-black uppercase tracking-[0.24em] text-rose-500">Customer portal</p>
+              <h1 className="mt-2 text-4xl font-black text-white">Welcome, {user.name}</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+                Your account is on the Free customer plan. You can protect up to 3 scripts once customer workspaces are enabled. Owner approval is required for higher limits.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link className={dashboardTheme.ghostButton} href="/docs">Read docs</Link>
+              <button className={dashboardTheme.button} onClick={logout} type="button">Logout</button>
+            </div>
+          </div>
+        </section>
+        <section className="grid gap-4 md:grid-cols-3">
+          <StatCard label="Free script slots" value="0 / 3" hint="Workspace ownership is coming next." />
+          <StatCard label="Plan" value="Free" hint="Starter access" />
+          <StatCard label="Status" value="Active" hint={user.email} />
+        </section>
+        <Panel title="What You Can Do">
+          <div className="grid gap-3 md:grid-cols-3">
+            {[
+              ["Protect scripts", "Free customers will be limited to 3 protected scripts."],
+              ["Use hosted loaders", "Your users will run AegisLua loadstrings with the same key prompt."],
+              ["Upgrade later", "Pro and Enterprise plans will unlock higher script, key, and automation limits."],
+            ].map(([title, text]) => (
+              <div className={dashboardTheme.panelSoft} key={title}>
+                <strong className="text-white">{title}</strong>
+                <p className="mt-2 text-sm leading-6 text-slate-500">{text}</p>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </main>
     </InteractiveShell>
   );
 }
@@ -714,17 +758,20 @@ function ScriptManagement(props: {
                     <Badge tone={script.active ? "good" : "bad"}>{script.active ? "Active" : "Disabled"}</Badge>
                     <Badge>{script.sourceBytes ? `${Math.ceil(script.sourceBytes / 1024)} KB` : "No source"}</Badge>
                   </div>
-                  <div className="mt-4 grid gap-3 lg:grid-cols-[260px_1fr]">
+                  <div className="mt-4 grid gap-3 text-sm lg:grid-cols-3">
                     <div className="rounded-xl border border-white/10 bg-black/35 p-3">
                       <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">Script ID</span>
                       <code className="mt-1 block break-all text-sm text-rose-300">{script.slug}</code>
                     </div>
                     <div className="rounded-xl border border-white/10 bg-black/35 p-3">
-                      <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">Loader</span>
-                      <code className="mt-1 block break-all text-xs text-rose-200">{loaderSnippetFor(script.slug)}</code>
+                      <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">Executions</span>
+                      <strong className="mt-1 block text-white">{runs}</strong>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/35 p-3">
+                      <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">Protected</span>
+                      <strong className="mt-1 block text-white">{script.sourceBytes ? `${Math.ceil(script.sourceBytes / 1024)} KB` : "No source"}</strong>
                     </div>
                   </div>
-                  <p className="mt-3 text-sm text-slate-500">{runs} successful executions tracked.</p>
                 </div>
                 <div className="flex flex-wrap gap-2 xl:max-w-[190px] xl:justify-end">
                   <button className={`${dashboardTheme.button} flex items-center gap-2`} onClick={() => props.copy(loaderSnippetFor(script.slug))} type="button">
@@ -1256,11 +1303,15 @@ function Logs({ logs, redemptions, licenses }: { logs: AuthLog[]; redemptions: C
 
 function UserManagement(props: {
   users: ManagedUser[];
+  scripts: ScriptProject[];
+  licenses: License[];
   currentUserId: string;
   updateUser: (
     target: ManagedUser,
     body: Partial<Pick<ManagedUser, "role" | "plan" | "subscriptionStatus" | "subscriptionRenewsAt" | "active">>,
   ) => void;
+  deleteUser: (target: ManagedUser) => void;
+  scriptNames: (ids: string[]) => string;
 }) {
   const owners = props.users.filter((user) => user.role === "owner").length;
   const paidUsers = props.users.filter((user) => user.plan === "pro" || user.plan === "enterprise").length;
@@ -1270,8 +1321,13 @@ function UserManagement(props: {
     <div className="grid gap-5">
       <section className="grid gap-4 md:grid-cols-3">
         <StatCard label="Site users" value={props.users.length} />
+        <StatCard label="Scripts total" value={props.scripts.length} />
+        <StatCard label="Keys total" value={props.licenses.length} />
+      </section>
+      <section className="grid gap-4 md:grid-cols-3">
         <StatCard label="Active accounts" value={activeUsers} />
         <StatCard label="Paid plans" value={paidUsers} hint={`${owners} owner account${owners === 1 ? "" : "s"}`} />
+        <StatCard label="Disabled accounts" value={props.users.length - activeUsers} />
       </section>
       <Panel title="User Management" meta="Owner only">
         <div className="mb-4 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
@@ -1347,11 +1403,49 @@ function UserManagement(props: {
                 >
                   {managedUser.active ? "Disable" : "Enable"}
                 </button>
+                <button
+                  className={dashboardTheme.dangerButton}
+                  disabled={managedUser.id === props.currentUserId}
+                  onClick={() => props.deleteUser(managedUser)}
+                  type="button"
+                >
+                  Delete
+                </button>
               </div>
             </article>
           ))}
         </div>
       </Panel>
+      <section className="grid gap-5 xl:grid-cols-2">
+        <Panel title="All Scripts" meta={`${props.scripts.length} total`}>
+          <div className="grid gap-2">
+            {props.scripts.length === 0 ? <EmptyState text="No scripts in the system yet." /> : null}
+            {props.scripts.map((script) => (
+              <div className="grid gap-2 rounded-xl border border-white/10 bg-black/35 p-3 text-sm sm:grid-cols-[1fr_auto]" key={script.id}>
+                <div className="min-w-0">
+                  <strong className="text-white">{script.name}</strong>
+                  <code className="mt-1 block truncate text-xs text-rose-300">{script.slug}</code>
+                </div>
+                <Badge tone={script.active ? "good" : "bad"}>{script.active ? "Active" : "Disabled"}</Badge>
+              </div>
+            ))}
+          </div>
+        </Panel>
+        <Panel title="All Keys" meta={`${props.licenses.length} total`}>
+          <div className="grid gap-2">
+            {props.licenses.length === 0 ? <EmptyState text="No keys in the system yet." /> : null}
+            {props.licenses.map((license) => (
+              <div className="grid gap-2 rounded-xl border border-white/10 bg-black/35 p-3 text-sm sm:grid-cols-[1fr_auto]" key={license.id}>
+                <div className="min-w-0">
+                  <strong className="text-white">{license.label}</strong>
+                  <p className="mt-1 truncate text-xs text-slate-500">{props.scriptNames(license.scriptIds) || "No scripts assigned"}</p>
+                </div>
+                <Badge tone={license.active ? "good" : "bad"}>{license.active ? "Active" : "Revoked"}</Badge>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </section>
     </div>
   );
 }
@@ -1489,10 +1583,10 @@ function CopyBox({ label, value, copy, compact = false }: { label: string; value
 function Modal({ open, title, children, onClose }: { open: boolean; title: string; children: React.ReactNode; onClose: () => void }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-xl">
-      <section className="glass-card modal-pop max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl p-5">
-        <div className="mb-5 flex items-center justify-between gap-4">
-          <h2 className="text-2xl font-black text-white">{title}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xl">
+      <section className="modal-pop max-h-[86vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[#0b0b10]/95 p-4 shadow-2xl shadow-black/60 sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-4 border-b border-white/10 pb-4">
+          <h2 className="text-xl font-black text-white">{title}</h2>
           <button className={dashboardTheme.ghostButton} onClick={onClose} type="button">Close</button>
         </div>
         {children}

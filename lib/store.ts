@@ -269,6 +269,11 @@ export async function getUser(id: string) {
   return raw ? (JSON.parse(raw) as UserAccount) : null;
 }
 
+export async function deleteUser(id: string) {
+  await redisCommand(["DEL", `${USER_PREFIX}${id}`]);
+  await redisCommand(["SREM", USER_INDEX, id]);
+}
+
 export async function listUsers() {
   return listByIndex<UserAccount>(USER_INDEX, USER_PREFIX);
 }

@@ -78,7 +78,7 @@ if not ok then error(err) end`}</code>
         </div>
       </section>
 
-      <section className="relative mx-auto max-w-7xl px-6 py-24">
+      <section className="relative mx-auto max-w-7xl px-6 py-24" id="features">
         <Reveal>
           <p className="font-mono text-xs uppercase tracking-[0.28em] text-rose-500">Features</p>
           <h2 className="mt-5 max-w-2xl text-4xl font-black leading-tight text-white sm:text-5xl">
@@ -119,9 +119,10 @@ function Nav() {
         <div className="hidden items-center gap-8 text-sm text-zinc-500 md:flex">
           <a className="transition hover:text-white" href="#features">Features</a>
           <Link className="transition hover:text-white" href="/pricing">Pricing</Link>
-          <Link className="transition hover:text-white" href="/dashboard">Docs</Link>
+          <Link className="transition hover:text-white" href="/docs">Docs</Link>
         </div>
         <div className="flex items-center gap-3 text-sm">
+          <Link className="hidden px-3 py-2 font-semibold text-zinc-500 transition hover:text-white lg:inline-flex" href="/dashboard">Dashboard</Link>
           <Link className="hidden px-3 py-2 font-semibold text-zinc-500 transition hover:text-white sm:inline-flex" href="/login">Sign in</Link>
           <Link className="magnetic-button rounded-xl bg-rose-600 px-5 py-3 font-black text-white transition hover:bg-rose-500" href="/login?mode=signup">Get started</Link>
         </div>

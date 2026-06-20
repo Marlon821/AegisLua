@@ -6,8 +6,8 @@ import { AnimatedNumber } from "@/components/motion";
 export const dashboardTheme = {
   page: "min-h-screen bg-transparent text-slate-100",
   sidebar: "border-b border-white/10 bg-black/80 p-4 backdrop-blur-2xl xl:sticky xl:top-0 xl:h-screen xl:border-b-0 xl:border-r",
-  panel: "glass-card rounded-2xl p-5 sm:p-6",
-  panelSoft: "rounded-2xl border border-white/10 bg-black/40 p-4 shadow-inner shadow-white/[0.02]",
+  panel: "glass-card rounded-2xl p-4 sm:p-5",
+  panelSoft: "rounded-2xl border border-white/10 bg-black/40 p-3.5 shadow-inner shadow-white/[0.02]",
   input:
     "w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-rose-400 focus:ring-2 focus:ring-rose-500/10",
   button:
@@ -43,9 +43,9 @@ export function Panel({
 
 export function StatCard({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
-    <article className="animate-rise glass-card rounded-2xl p-5 transition hover:-translate-y-1">
+    <article className="animate-rise glass-card rounded-2xl p-4 transition hover:-translate-y-1">
       <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</span>
-      <strong className="mt-4 block text-3xl font-black text-white sm:text-4xl">
+      <strong className="mt-3 block text-2xl font-black text-white sm:text-3xl">
         {typeof value === "number" ? <AnimatedNumber value={value} /> : value}
       </strong>
       {hint ? <p className="mt-2 text-xs text-slate-500">{hint}</p> : null}
@@ -114,14 +114,15 @@ export function MiniBarChart({ points, label }: { points: Array<{ label: string;
         <h3 className="font-black text-white">{label}</h3>
         <span className="text-xs text-slate-500">last 7 days</span>
       </div>
-      <div className="flex h-36 items-end gap-2">
-        {points.map((point) => (
+      <div className="flex h-32 items-end gap-2">
+        {points.map((point, index) => (
           <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={point.label}>
-            <div className="flex h-28 w-full items-end rounded-lg bg-black/55 p-1">
+            <div className="flex h-24 w-full items-end rounded-lg bg-black/55 p-1">
               <div
-                className="w-full rounded-md bg-gradient-to-t from-rose-950 via-rose-700 to-rose-500 transition-all"
+                className="chart-bar w-full rounded-md bg-gradient-to-t from-rose-950 via-rose-700 to-rose-500"
                 style={{ height: `${Math.max(5, (point.value / max) * 100)}%` }}
                 title={`${point.label}: ${point.value}`}
+                data-index={index}
               />
             </div>
             <span className="w-full truncate text-center text-[11px] text-slate-500">{point.label}</span>
