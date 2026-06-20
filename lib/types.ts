@@ -25,6 +25,7 @@ export type BoundDevice = {
 export type LicenseRecord = {
   id: string;
   keyHash: string;
+  keyEncrypted?: string | null;
   label: string;
   active: boolean;
   scriptIds: string[];

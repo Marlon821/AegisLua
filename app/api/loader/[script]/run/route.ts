@@ -90,7 +90,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sc
   await appendLog({ ...logBase, licenseId: license.id, scriptId: script.id, ok: true, reason: "ok" });
 
   return response(true, "ok", 200, {
-    code,
+    payload: Buffer.from(code, "utf8").toString("base64"),
     script: {
       id: script.id,
       slug: script.slug,

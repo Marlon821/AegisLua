@@ -11,6 +11,22 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RUN_URL = ${JSON.stringify(runUrl)}
 
+local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+local function b64decode(data)
+    data = string.gsub(data, '[^'..b..'=]', '')
+    return (data:gsub('.', function(x)
+        if x == '=' then return '' end
+        local r,f='',(b:find(x)-1)
+        for i=6,1,-1 do r = r .. (f % 2^i - f % 2^(i-1) > 0 and '1' or '0') end
+        return r
+    end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x)
+        if #x ~= 8 then return '' end
+        local c=0
+        for i=1,8 do c = c + (x:sub(i,i) == '1' and 2^(8-i) or 0) end
+        return string.char(c)
+    end))
+end
+
 local function postJson(url, body)
     local payload = HttpService:JSONEncode(body)
     if syn and syn.request then
@@ -26,7 +42,7 @@ local function postJson(url, body)
 end
 
 local gui = Instance.new("ScreenGui")
-gui.Name = "AegisLuaKey"
+gui.Name = "AL_" .. tostring(math.random(100000, 999999))
 gui.ResetOnSpawn = false
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -95,9 +111,10 @@ button.MouseButton1Click:Connect(function()
         return
     end
     local decoded = HttpService:JSONDecode(raw)
-    if decoded.ok and decoded.code then
+    if decoded.ok and (decoded.payload or decoded.code) then
         gui:Destroy()
-        loadstring(decoded.code)()
+        local source = decoded.payload and b64decode(decoded.payload) or decoded.code
+        loadstring(source)()
     else
         status.Text = decoded.reason or "Invalid key."
     end

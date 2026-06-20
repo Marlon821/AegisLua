@@ -44,6 +44,7 @@ type License = {
   id: string;
   label: string;
   active: boolean;
+  hasStoredKey?: boolean;
   scriptIds: string[];
   maxUsers: number;
   users: string[];
@@ -483,6 +484,11 @@ export default function DashboardPage() {
               createLicense={createLicense}
               newKey={newKey}
             scriptNames={scriptNames}
+            copy={copy}
+            revealLicenseKey={async (license) => {
+              const payload = await patch(`/api/admin/licenses/${license.id}`, { action: "reveal" }, "Key revealed.");
+              return typeof payload?.key === "string" ? payload.key : null;
+            }}
             toggleLicense={(license) => patch(`/api/admin/licenses/${license.id}`, { active: !license.active }, license.active ? "License revoked." : "License enabled.")}
             deleteLicense={(license) => remove(`/api/admin/licenses/${license.id}`, "License deleted.")}
           />
@@ -747,15 +753,95 @@ function KeyManagement(props: {
   createLicense: (event: FormEvent) => void;
   newKey: string;
   scriptNames: (ids: string[]) => string;
+  revealLicenseKey: (license: License) => Promise<string | null>;
+  copy: (value: string) => void;
   toggleLicense: (license: License) => void;
   deleteLicense: (license: License) => void;
 }) {
+  const [creating, setCreating] = useState(false);
+  const [visibleKeys, setVisibleKeys] = useState<Record<string, string>>({});
+
+  async function revealKey(license: License) {
+    const key = await props.revealLicenseKey(license);
+    if (key) setVisibleKeys((current) => ({ ...current, [license.id]: key }));
+  }
+
   return (
-    <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
-      <Panel title="Create Long-Term Key">
-        <form className="grid gap-4" onSubmit={props.createLicense}>
+    <div className="grid gap-5">
+      <Panel title="Key Management" meta={`${props.licenses.length} total`}>
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+          <div>
+            <p className="max-w-2xl text-sm leading-6 text-slate-400">
+              Long-term keys are best for paid customers, testers, and private access. Create keys in a focused dialog, then manage status and visibility from the inventory.
+            </p>
+          </div>
+          <button className={`${dashboardTheme.button} flex items-center justify-center gap-2`} onClick={() => setCreating(true)} type="button">
+            <KeyRound size={16} />
+            Generate key
+          </button>
+        </div>
+        {props.newKey ? <KeyBox label="Newest key, shown here for this session" value={props.newKey} /> : null}
+      </Panel>
+
+      <Panel title="Key Inventory">
+        <div className="grid gap-3">
+          {props.licenses.length === 0 ? <EmptyState text="No keys generated yet." /> : null}
+          {props.licenses.map((license) => {
+            const visibleKey = visibleKeys[license.id];
+            return (
+              <article className={dashboardTheme.panelSoft} key={license.id}>
+                <div className="grid gap-4 xl:grid-cols-[1fr_auto]">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <KeyRound className="text-rose-500" size={18} />
+                      <strong className="text-white">{license.label}</strong>
+                      <Badge tone={license.active ? "good" : "bad"}>{license.active ? "Active" : "Revoked"}</Badge>
+                      <Badge tone={license.hasStoredKey ? "neutral" : "warn"}>{license.hasStoredKey ? "Revealable" : "Legacy hash only"}</Badge>
+                    </div>
+                    <div className="mt-3 grid gap-2 text-sm text-slate-500 md:grid-cols-4">
+                      <span><strong className="text-slate-300">Script:</strong> {props.scriptNames(license.scriptIds) || "No scripts assigned"}</span>
+                      <span><strong className="text-slate-300">Users:</strong> {license.maxUsers >= 1000000 ? "Shared" : `${license.users.length} / ${license.maxUsers}`}</span>
+                      <span><strong className="text-slate-300">Devices:</strong> {license.maxDevices >= 1000000 ? "Shared" : `${license.devices.length} / ${license.maxDevices}`}</span>
+                      <span><strong className="text-slate-300">Expiry:</strong> {license.expiresAt ? new Date(license.expiresAt).toLocaleDateString() : "None"}</span>
+                    </div>
+                    {visibleKey ? (
+                      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-rose-400/25 bg-rose-500/10 p-3 sm:flex-row sm:items-center">
+                        <code className="min-w-0 flex-1 break-all text-sm text-rose-100">{visibleKey}</code>
+                        <button className={dashboardTheme.ghostButton} onClick={() => props.copy(visibleKey)} type="button">Copy</button>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2 xl:justify-end">
+                    <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} disabled={!license.hasStoredKey} onClick={() => revealKey(license)} type="button">
+                      <Copy size={15} />
+                      {visibleKey ? "Refresh" : "Show key"}
+                    </button>
+                    <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleLicense(license)} type="button">
+                      <Power size={15} />
+                      {license.active ? "Disable" : "Enable"}
+                    </button>
+                    <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteLicense(license)} type="button">
+                      <Trash2 size={15} />
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </Panel>
+
+      <Modal open={creating} title="Create Long-Term Key" onClose={() => setCreating(false)}>
+        <form
+          className="grid gap-4"
+          onSubmit={(event) => {
+            props.createLicense(event);
+            setCreating(false);
+          }}
+        >
           <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm leading-6 text-zinc-400">
-            Long-term keys are best for paid customers, testers, or private access. These can have user/device limits and optional expiration.
+            Configure limits for one reusable key. New keys are encrypted at rest so you can reveal them later from the inventory.
           </div>
           <Field label="Label"><input className={dashboardTheme.input} value={props.licenseLabel} onChange={(event) => props.setLicenseLabel(event.target.value)} /></Field>
           <MultiScriptSelect scripts={props.scripts} value={props.selectedScriptIds} onChange={props.setSelectedScriptIds} />
@@ -768,43 +854,8 @@ function KeyManagement(props: {
             <KeyRound size={16} />
             Generate key
           </button>
-          {props.newKey ? <KeyBox label="New key, shown once" value={props.newKey} /> : null}
         </form>
-      </Panel>
-      <Panel title="Key Inventory" meta={`${props.licenses.length} total`}>
-        <div className="grid gap-3">
-          {props.licenses.length === 0 ? <EmptyState text="No keys generated yet." /> : null}
-          {props.licenses.map((license) => (
-            <article className={dashboardTheme.panelSoft} key={license.id}>
-              <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <KeyRound className="text-rose-500" size={18} />
-                    <strong className="text-white">{license.label}</strong>
-                    <Badge tone={license.active ? "good" : "bad"}>{license.active ? "Active" : "Revoked"}</Badge>
-                  </div>
-                  <div className="mt-3 grid gap-2 text-sm text-slate-500 md:grid-cols-3">
-                    <span><strong className="text-slate-300">Script:</strong> {props.scriptNames(license.scriptIds) || "No scripts assigned"}</span>
-                    <span><strong className="text-slate-300">Users:</strong> {license.maxUsers >= 1000000 ? "Shared" : `${license.users.length} / ${license.maxUsers}`}</span>
-                    <span><strong className="text-slate-300">Devices:</strong> {license.maxDevices >= 1000000 ? "Shared" : `${license.devices.length} / ${license.maxDevices}`}</span>
-                  </div>
-                  <p className="mt-2 text-sm text-slate-500">{license.expiresAt ? `Expires ${new Date(license.expiresAt).toLocaleString()}` : "No expiry"}</p>
-                </div>
-                <div className="flex flex-wrap gap-2 lg:justify-end">
-                  <button className={`${dashboardTheme.ghostButton} flex items-center gap-2`} onClick={() => props.toggleLicense(license)} type="button">
-                    <Power size={15} />
-                    {license.active ? "Disable" : "Enable"}
-                  </button>
-                  <button className={`${dashboardTheme.dangerButton} flex items-center gap-2`} onClick={() => props.deleteLicense(license)} type="button">
-                    <Trash2 size={15} />
-                    Remove
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </Panel>
+      </Modal>
     </div>
   );
 }
@@ -1334,6 +1385,21 @@ function CopyBox({ label, value, copy, compact = false }: { label: string; value
         <code className="min-w-0 flex-1 break-all rounded-lg bg-black/55 p-3 text-sm text-rose-100">{value}</code>
         <button className={dashboardTheme.ghostButton} onClick={() => copy(value)} type="button">Copy</button>
       </div>
+    </div>
+  );
+}
+
+function Modal({ open, title, children, onClose }: { open: boolean; title: string; children: React.ReactNode; onClose: () => void }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-xl">
+      <section className="glass-card modal-pop w-full max-w-2xl rounded-3xl p-5">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <h2 className="text-2xl font-black text-white">{title}</h2>
+          <button className={dashboardTheme.ghostButton} onClick={onClose} type="button">Close</button>
+        </div>
+        {children}
+      </section>
     </div>
   );
 }

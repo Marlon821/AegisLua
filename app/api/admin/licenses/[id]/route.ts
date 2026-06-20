@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
+import { decryptSecret } from "@/lib/crypto";
 import { deleteLicense, getLicense, saveLicense } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -16,6 +17,17 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 
   const body = await request.json().catch(() => ({}));
+  if (body.action === "reveal") {
+    if (!record.keyEncrypted) {
+      return NextResponse.json({ error: "This key was created before reveal support and cannot be recovered." }, { status: 404 });
+    }
+    try {
+      return NextResponse.json({ key: decryptSecret(record.keyEncrypted) });
+    } catch {
+      return NextResponse.json({ error: "Stored key could not be decrypted." }, { status: 500 });
+    }
+  }
+
   if (typeof body.active === "boolean") record.active = body.active;
   if (typeof body.label === "string") record.label = body.label;
   if (Array.isArray(body.scriptIds)) record.scriptIds = body.scriptIds.map(String).filter(Boolean);

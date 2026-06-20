@@ -5,6 +5,11 @@ import { deleteAutoKeyRule, getAutoKeyRule, saveAutoKeyRule, saveLicense } from 
 
 export const runtime = "nodejs";
 
+function publicLicense<T extends { keyHash?: string; keyEncrypted?: string | null }>(license: T) {
+  const { keyHash: _keyHash, keyEncrypted: _keyEncrypted, ...safe } = license;
+  return { ...safe, hasStoredKey: Boolean(license.keyEncrypted) };
+}
+
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin(request))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,7 +32,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     rule.currentLicenseId = license.id;
     rule.updatedAt = now.toISOString();
     await saveAutoKeyRule(rule);
-    return NextResponse.json({ key: plainKey, license, rule });
+    return NextResponse.json({ key: plainKey, license: publicLicense(license), rule });
   }
 
   if (typeof body.name === "string") rule.name = body.name;

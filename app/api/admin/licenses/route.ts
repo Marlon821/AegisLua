@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
-import { createId, createPlainKey, hashKey } from "@/lib/crypto";
+import { createId, createPlainKey, encryptSecret, hashKey } from "@/lib/crypto";
 import { listLicenses, saveLicense } from "@/lib/store";
 import { LicenseRecord } from "@/lib/types";
 
 export const runtime = "nodejs";
 
 function publicLicense(record: LicenseRecord) {
-  const { keyHash: _keyHash, ...safe } = record;
-  return safe;
+  const { keyHash: _keyHash, keyEncrypted: _keyEncrypted, ...safe } = record;
+  return { ...safe, hasStoredKey: Boolean(record.keyEncrypted) };
 }
 
 export async function GET(request: NextRequest) {
@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
   const record: LicenseRecord = {
     id: createId(),
     keyHash: hashKey(plainKey),
+    keyEncrypted: encryptSecret(plainKey),
     label: String(body.label || "Untitled license"),
     active: true,
     scriptIds,

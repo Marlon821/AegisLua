@@ -1,5 +1,5 @@
 import { AutoKeyIntervalUnit, AutoKeyRule, LicenseRecord } from "./types";
-import { createId, createPlainKey, hashKey } from "./crypto";
+import { createId, createPlainKey, encryptSecret, hashKey } from "./crypto";
 
 export function nextRunFrom(start: Date, count: number, unit: AutoKeyIntervalUnit) {
   const next = new Date(start);
@@ -18,6 +18,7 @@ export function createLicenseFromRule(rule: AutoKeyRule) {
   const license: LicenseRecord = {
     id: createId(),
     keyHash: hashKey(plainKey),
+    keyEncrypted: encryptSecret(plainKey),
     label: `${rule.labelPrefix} ${now.toLocaleDateString("en-US")}`,
     active: true,
     scriptIds: rule.scriptIds,
