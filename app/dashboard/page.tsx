@@ -18,12 +18,26 @@ import {
   Shield,
   Trash2,
   Upload,
+  Users,
   Wand2,
 } from "lucide-react";
 import { Badge, EmptyState, Field, MiniBarChart, Panel, StatCard, Tabs, dashboardTheme } from "@/components/dashboard/ui";
 import { InteractiveShell, Reveal } from "@/components/motion";
 
 type AppUser = { id: string; email: string; name: string; role: string };
+type ManagedUser = {
+  id: string;
+  email: string;
+  name: string;
+  role: "owner" | "admin" | "customer";
+  plan: "free" | "pro" | "enterprise";
+  subscriptionStatus: "free" | "trialing" | "active" | "past_due" | "canceled";
+  subscriptionRenewsAt: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt: string | null;
+};
 type ScriptProject = { id: string; name: string; slug: string; active: boolean; requireDeviceId: boolean; sourceBytes?: number; protectedAt?: string | null };
 type Device = { hash: string; userId: string; username: string | null; status: "active" | "blocked" };
 type License = {
@@ -94,6 +108,7 @@ const tabs = [
   { id: "auto", label: "Auto Key Gen", icon: Wand2 },
   { id: "deployment", label: "Ad Systems", icon: Megaphone },
   { id: "logs", label: "Logs", icon: Activity },
+  { id: "users", label: "Users", icon: Users, ownerOnly: true },
   { id: "api", label: "Advanced", icon: Code2 },
 ];
 
@@ -108,6 +123,7 @@ export default function DashboardPage() {
   const [tickets, setTickets] = useState<ClaimTicket[]>([]);
   const [redemptions, setRedemptions] = useState<ClaimRedemption[]>([]);
   const [autoRules, setAutoRules] = useState<AutoKeyRule[]>([]);
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -168,12 +184,13 @@ export default function DashboardPage() {
 
   async function loadData() {
     setError("");
-    const [scriptsResponse, licensesResponse, logsResponse, claimsResponse, autoResponse] = await Promise.all([
+    const [scriptsResponse, licensesResponse, logsResponse, claimsResponse, autoResponse, usersResponse] = await Promise.all([
       fetch("/api/admin/scripts", { cache: "no-store" }),
       fetch("/api/admin/licenses", { cache: "no-store" }),
       fetch("/api/admin/logs", { cache: "no-store" }),
       fetch("/api/admin/claims", { cache: "no-store" }),
       fetch("/api/admin/auto-keys", { cache: "no-store" }),
+      user?.role === "owner" ? fetch("/api/admin/users", { cache: "no-store" }) : Promise.resolve(null),
     ]);
 
     if (!scriptsResponse.ok || !licensesResponse.ok || !logsResponse.ok || !claimsResponse.ok || !autoResponse.ok) {
@@ -189,6 +206,7 @@ export default function DashboardPage() {
     setTickets(claimsPayload.tickets || []);
     setRedemptions(claimsPayload.redemptions || []);
     setAutoRules((await autoResponse.json()).rules || []);
+    if (usersResponse?.ok) setManagedUsers((await usersResponse.json()).users || []);
   }
 
   useEffect(() => {
@@ -376,6 +394,8 @@ export default function DashboardPage() {
     );
   }
 
+  const visibleTabs = tabs.filter((tab) => !tab.ownerOnly || user.role === "owner");
+
   return (
     <InteractiveShell className={`${dashboardTheme.page} lg:grid lg:grid-cols-[290px_1fr]`}>
       <aside className={dashboardTheme.sidebar}>
@@ -386,7 +406,7 @@ export default function DashboardPage() {
             <span className="text-xs text-slate-400">{user.email}</span>
           </div>
         </Link>
-        <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+        <Tabs tabs={visibleTabs} active={activeTab} onChange={setActiveTab} />
         <button className={`${dashboardTheme.ghostButton} mt-6 w-full`} onClick={logout} type="button">Logout</button>
       </aside>
 
@@ -395,7 +415,7 @@ export default function DashboardPage() {
           <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
             <div>
               <p className="font-mono text-xs font-black uppercase tracking-[0.28em] text-rose-500">AegisLua Control Center</p>
-              <h1 className="mt-2 text-4xl font-black text-white">{tabs.find((tab) => tab.id === activeTab)?.label}</h1>
+              <h1 className="mt-2 text-4xl font-black text-white">{visibleTabs.find((tab) => tab.id === activeTab)?.label}</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
                 Manage protected scripts, long-term keys, rotating public keys, ad systems, and validation logs from one place.
               </p>
@@ -535,6 +555,13 @@ export default function DashboardPage() {
           ) : null}
 
           {activeTab === "logs" ? <Logs logs={logs} redemptions={redemptions} licenses={licenses} /> : null}
+          {activeTab === "users" && user.role === "owner" ? (
+            <UserManagement
+              users={managedUsers}
+              currentUserId={user.id}
+              updateUser={(target, body) => patch(`/api/admin/users/${target.id}`, body, "User updated.")}
+            />
+          ) : null}
           {activeTab === "api" ? <ApiDocs scripts={scripts} /> : null}
         </Reveal>
       </section>
@@ -1079,6 +1106,108 @@ function Logs({ logs, redemptions, licenses }: { logs: AuthLog[]; redemptions: C
   );
 }
 
+function UserManagement(props: {
+  users: ManagedUser[];
+  currentUserId: string;
+  updateUser: (
+    target: ManagedUser,
+    body: Partial<Pick<ManagedUser, "role" | "plan" | "subscriptionStatus" | "subscriptionRenewsAt" | "active">>,
+  ) => void;
+}) {
+  const owners = props.users.filter((user) => user.role === "owner").length;
+  const paidUsers = props.users.filter((user) => user.plan === "pro" || user.plan === "enterprise").length;
+  const activeUsers = props.users.filter((user) => user.active).length;
+
+  return (
+    <div className="grid gap-5">
+      <section className="grid gap-4 md:grid-cols-3">
+        <StatCard label="Site users" value={props.users.length} />
+        <StatCard label="Active accounts" value={activeUsers} />
+        <StatCard label="Paid plans" value={paidUsers} hint={`${owners} owner account${owners === 1 ? "" : "s"}`} />
+      </section>
+      <Panel title="User Management" meta="Owner only">
+        <div className="mb-4 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
+          Your owner account can promote admins, disable accounts, and manually assign subscription plans while payment automation is still being built.
+        </div>
+        <div className="grid gap-3">
+          {props.users.length === 0 ? <EmptyState text="No users found." /> : null}
+          {props.users.map((managedUser) => (
+            <article className={dashboardTheme.panelSoft} key={managedUser.id}>
+              <div className="grid gap-4 xl:grid-cols-[1.4fr_2fr_auto] xl:items-center">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Users className="text-rose-500" size={18} />
+                    <strong className="text-white">{managedUser.name}</strong>
+                    {managedUser.id === props.currentUserId ? <Badge tone="good">You</Badge> : null}
+                    <Badge tone={managedUser.active ? "good" : "bad"}>{managedUser.active ? "Active" : "Disabled"}</Badge>
+                  </div>
+                  <p className="mt-2 break-all text-sm text-slate-400">{managedUser.email}</p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    Joined {new Date(managedUser.createdAt).toLocaleDateString()} - Last login {managedUser.lastLoginAt ? new Date(managedUser.lastLoginAt).toLocaleString() : "never"}
+                  </p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-4">
+                  <Field label="Role">
+                    <select
+                      className={dashboardTheme.input}
+                      value={managedUser.role}
+                      onChange={(event) => props.updateUser(managedUser, { role: event.target.value as ManagedUser["role"] })}
+                    >
+                      <option value="owner">Owner</option>
+                      <option value="admin">Admin</option>
+                      <option value="customer">Customer</option>
+                    </select>
+                  </Field>
+                  <Field label="Plan">
+                    <select
+                      className={dashboardTheme.input}
+                      value={managedUser.plan}
+                      onChange={(event) => props.updateUser(managedUser, { plan: event.target.value as ManagedUser["plan"] })}
+                    >
+                      <option value="free">Free</option>
+                      <option value="pro">Pro</option>
+                      <option value="enterprise">Enterprise</option>
+                    </select>
+                  </Field>
+                  <Field label="Subscription">
+                    <select
+                      className={dashboardTheme.input}
+                      value={managedUser.subscriptionStatus}
+                      onChange={(event) => props.updateUser(managedUser, { subscriptionStatus: event.target.value as ManagedUser["subscriptionStatus"] })}
+                    >
+                      <option value="free">Free</option>
+                      <option value="trialing">Trialing</option>
+                      <option value="active">Active</option>
+                      <option value="past_due">Past due</option>
+                      <option value="canceled">Canceled</option>
+                    </select>
+                  </Field>
+                  <Field label="Renews">
+                    <input
+                      className={dashboardTheme.input}
+                      type="datetime-local"
+                      value={toDateTimeLocal(managedUser.subscriptionRenewsAt)}
+                      onChange={(event) => props.updateUser(managedUser, { subscriptionRenewsAt: event.target.value ? new Date(event.target.value).toISOString() : null })}
+                    />
+                  </Field>
+                </div>
+                <button
+                  className={managedUser.active ? dashboardTheme.dangerButton : dashboardTheme.ghostButton}
+                  disabled={managedUser.id === props.currentUserId}
+                  onClick={() => props.updateUser(managedUser, { active: !managedUser.active })}
+                  type="button"
+                >
+                  {managedUser.active ? "Disable" : "Enable"}
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
 function ApiDocs({ scripts }: { scripts: ScriptProject[] }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const scriptSlug = scripts[0]?.slug || "your-script-id";
@@ -1173,6 +1302,14 @@ function providerLabel(provider: ClaimCampaign["provider"]) {
     lootlabs: "LootLabs",
   };
   return labels[provider] || provider;
+}
+
+function toDateTimeLocal(value: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 16);
 }
 
 function loaderSnippetFor(scriptSlug: string) {

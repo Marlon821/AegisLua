@@ -48,18 +48,20 @@ KV_REST_API_URL=https://your-kv-instance.upstash.io
 KV_REST_API_TOKEN=your-kv-rest-token
 DEVICE_HASH_SALT=change-this-random-device-hash-salt
 CLAIM_SECRET=change-this-random-claim-signing-secret
+OWNER_EMAIL=you@example.com
 RESEND_API_KEY=
 EMAIL_FROM=AegisLua <noreply@your-domain.com>
 LOCAL_KV_FALLBACK=false
 ```
 
-Use Vercel KV or Upstash Redis for the KV REST values. `RESEND_API_KEY` and `EMAIL_FROM` are optional locally, but production password reset emails need an email provider.
+Use Vercel KV or Upstash Redis for the KV REST values. `OWNER_EMAIL` is your safety latch: that email is always treated as the owner account. `RESEND_API_KEY` and `EMAIL_FROM` are optional locally, but production password reset emails need an email provider.
 
 ## Admin Panel
 
 Open the deployed site and create the first account.
 
 The first signup becomes the owner account. Later signups become customer accounts.
+If you already created a test account first, set `OWNER_EMAIL` to your real login email in Vercel and sign in again; AegisLua will promote that account to owner automatically.
 
 Current features:
 

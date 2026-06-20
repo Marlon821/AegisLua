@@ -131,6 +131,9 @@ export type UserAccount = {
   email: string;
   name: string;
   role: "owner" | "admin" | "customer";
+  plan?: "free" | "pro" | "enterprise";
+  subscriptionStatus?: "free" | "trialing" | "active" | "past_due" | "canceled";
+  subscriptionRenewsAt?: string | null;
   passwordHash: string;
   active: boolean;
   createdAt: string;
