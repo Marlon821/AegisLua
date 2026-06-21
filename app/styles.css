@@ -22,6 +22,38 @@ html {
   scroll-behavior: smooth;
 }
 
+.scroll-surface {
+  scrollbar-color: rgba(229, 24, 58, 0.48) rgba(255, 255, 255, 0.045);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.scroll-surface::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scroll-surface::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.scroll-surface::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(5, 5, 8, 0.92);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(244, 18, 62, 0.78), rgba(128, 18, 42, 0.72));
+}
+
+.scroll-surface::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 44, 82, 0.95), rgba(176, 24, 56, 0.85));
+}
+
+.scroll-surface::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;

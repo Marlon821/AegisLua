@@ -26,7 +26,7 @@ import {
   Users,
   Wand2,
 } from "lucide-react";
-import { Badge, EmptyState, Field, MiniBarChart, Panel, StatCard, Tabs, dashboardTheme } from "@/components/dashboard/ui";
+import { Badge, EmptyState, Field, MiniBarChart, Panel, ScrollArea, StatCard, Tabs, dashboardTheme } from "@/components/dashboard/ui";
 import { InteractiveShell, Reveal } from "@/components/motion";
 
 type AppUser = {
@@ -886,9 +886,9 @@ function ScriptManagement(props: {
         </div>
         {props.scripts.length === 0 ? <EmptyState text="No scripts yet. Protect a Lua file to generate your first loader." /> : null}
         {props.scripts.length > 0 && filteredScripts.length === 0 ? <EmptyState text="No scripts match that search." /> : null}
-        <div className="overflow-x-auto">
-          <div className="min-w-[860px] overflow-hidden rounded-2xl border border-white/10">
-            <div className="grid grid-cols-[1.2fr_1fr_0.55fr_0.6fr_0.9fr] border-b border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-600">
+        <ScrollArea className="max-h-[56vh] rounded-2xl border border-white/10">
+          <div className="min-w-[860px]">
+            <div className="sticky top-0 z-10 grid grid-cols-[1.2fr_1fr_0.55fr_0.6fr_0.9fr] border-b border-white/10 bg-[#0b0b10]/95 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-600 backdrop-blur-xl">
               <span>Script</span>
               <span>ID</span>
               <span>Runs</span>
@@ -929,7 +929,7 @@ function ScriptManagement(props: {
           );
         })}
           </div>
-        </div>
+        </ScrollArea>
       </Panel>
 
       <Modal open={creating} title="Protect a Script" onClose={() => setCreating(false)}>
@@ -1070,9 +1070,9 @@ function KeyManagement(props: {
         </div>
         {props.licenses.length === 0 ? <EmptyState text="No keys generated yet." /> : null}
         {props.licenses.length > 0 && filteredLicenses.length === 0 ? <EmptyState text="No keys match those filters." /> : null}
-        <div className="overflow-x-auto">
-          <div className="min-w-[980px] overflow-hidden rounded-2xl border border-white/10">
-            <div className="grid grid-cols-[1.05fr_1.35fr_1fr_0.75fr_0.8fr_1fr] border-b border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-600">
+        <ScrollArea className="max-h-[56vh] rounded-2xl border border-white/10">
+          <div className="min-w-[980px]">
+            <div className="sticky top-0 z-10 grid grid-cols-[1.05fr_1.35fr_1fr_0.75fr_0.8fr_1fr] border-b border-white/10 bg-[#0b0b10]/95 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-600 backdrop-blur-xl">
               <span>Label</span>
               <span>Key</span>
               <span>Script</span>
@@ -1141,7 +1141,7 @@ function KeyManagement(props: {
             );
           })}
           </div>
-        </div>
+        </ScrollArea>
       </Panel>
 
       <Modal open={creating} title="Create Long-Term Key" onClose={() => setCreating(false)}>
@@ -1214,7 +1214,8 @@ function AutoKeyManagement(props: {
         ) : null}
       </Panel>
 
-      <div className="grid gap-4">
+      <ScrollArea className="max-h-[52vh] pr-1">
+        <div className="grid gap-4">
         {props.rules.length === 0 ? <EmptyState text="No auto key rules yet. Create one for rotating weekly or daily keys." /> : null}
         {props.rules.map((rule) => (
           <article className="glass-card rounded-2xl p-5" key={rule.id}>
@@ -1240,7 +1241,8 @@ function AutoKeyManagement(props: {
             </div>
           </article>
         ))}
-      </div>
+        </div>
+      </ScrollArea>
 
       <Modal open={creating} title="Create Auto Key Rule" onClose={() => setCreating(false)}>
         <form
@@ -1344,7 +1346,8 @@ function AdSystems(props: {
         {props.newClaimUrl ? <CopyBox label="Newest provider destination URL" value={props.newClaimUrl} copy={props.copy} compact /> : null}
       </Panel>
 
-      <div className="grid gap-4">
+      <ScrollArea className="max-h-[52vh] pr-1">
+        <div className="grid gap-4">
         {props.campaigns.length === 0 ? <EmptyState text="No ad systems created yet. Create one to start monetizing keys." /> : null}
         {props.campaigns.map((campaign) => {
           const latestTicket = props.tickets
@@ -1380,7 +1383,8 @@ function AdSystems(props: {
             </article>
           );
         })}
-      </div>
+        </div>
+      </ScrollArea>
 
       <Modal open={creating} title="Create Ad System" onClose={() => setCreating(false)}>
           <form
@@ -1448,6 +1452,7 @@ function Logs({ logs, redemptions, licenses }: { logs: AuthLog[]; redemptions: C
   return (
     <div className="grid gap-5 xl:grid-cols-2">
       <Panel title="Script Executions" meta={`${logs.length} auth attempts`}>
+        <ScrollArea className="max-h-[44vh] pr-1">
         <div className="grid gap-2">
           {logs.length === 0 ? <EmptyState text="No script execution logs yet." /> : null}
           {logs.map((log) => (
@@ -1459,8 +1464,10 @@ function Logs({ logs, redemptions, licenses }: { logs: AuthLog[]; redemptions: C
             </div>
           ))}
         </div>
+        </ScrollArea>
       </Panel>
       <Panel title="Players" meta={`${players.length} seen`}>
+        <ScrollArea className="max-h-[44vh] pr-1">
         <div className="grid gap-2">
           {players.length === 0 ? <EmptyState text="No players have executed a secured script yet." /> : null}
           {players.map((player) => (
@@ -1470,8 +1477,10 @@ function Logs({ logs, redemptions, licenses }: { logs: AuthLog[]; redemptions: C
             </div>
           ))}
         </div>
+        </ScrollArea>
       </Panel>
       <Panel title="Claim Redemptions" meta={`${redemptions.length} attempts`}>
+        <ScrollArea className="max-h-[44vh] pr-1">
         <div className="grid gap-2">
           {redemptions.length === 0 ? <EmptyState text="No claim redemption logs yet." /> : null}
           {redemptions.map((redemption) => (
@@ -1482,8 +1491,10 @@ function Logs({ logs, redemptions, licenses }: { logs: AuthLog[]; redemptions: C
             </div>
           ))}
         </div>
+        </ScrollArea>
       </Panel>
       <Panel title="Recent License Users" meta={`${licenses.length} keys`}>
+        <ScrollArea className="max-h-[44vh] pr-1">
         <div className="grid gap-2">
           {licenses.map((license) => (
             <div className="rounded-xl border border-white/10 bg-black/35 p-3 text-sm" key={license.id}>
@@ -1492,6 +1503,7 @@ function Logs({ logs, redemptions, licenses }: { logs: AuthLog[]; redemptions: C
             </div>
           ))}
         </div>
+        </ScrollArea>
       </Panel>
     </div>
   );
@@ -1540,6 +1552,7 @@ function UserManagement(props: {
         <div className="mb-4 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
           Your owner account can promote admins, disable accounts, and manually assign subscription plans while payment automation is still being built.
         </div>
+        <ScrollArea className="max-h-[58vh] pr-1">
         <div className="grid gap-3">
           {props.users.length === 0 ? <EmptyState text="No users found." /> : null}
           {props.users.map((managedUser) => (
@@ -1635,6 +1648,7 @@ function UserManagement(props: {
             </article>
           ))}
         </div>
+        </ScrollArea>
       </Panel>
       <Modal open={Boolean(selectedUser)} title={selectedUser ? `${selectedUser.name} Details` : "User Details"} onClose={() => setSelectedUser(null)}>
         {selectedUser ? (
@@ -1705,6 +1719,7 @@ function UserManagement(props: {
       </Modal>
       <section className="grid gap-5 xl:grid-cols-2">
         <Panel title="All Scripts" meta={`${props.scripts.length} total`}>
+          <ScrollArea className="max-h-[36vh] pr-1">
           <div className="grid gap-2">
             {props.scripts.length === 0 ? <EmptyState text="No scripts in the system yet." /> : null}
             {props.scripts.map((script) => (
@@ -1717,8 +1732,10 @@ function UserManagement(props: {
               </div>
             ))}
           </div>
+          </ScrollArea>
         </Panel>
         <Panel title="All Keys" meta={`${props.licenses.length} total`}>
+          <ScrollArea className="max-h-[36vh] pr-1">
           <div className="grid gap-2">
             {props.licenses.length === 0 ? <EmptyState text="No keys in the system yet." /> : null}
             {props.licenses.map((license) => (
@@ -1731,6 +1748,7 @@ function UserManagement(props: {
               </div>
             ))}
           </div>
+          </ScrollArea>
         </Panel>
       </section>
     </div>
@@ -1742,7 +1760,7 @@ function OwnerUserScripts({ scripts, query }: { scripts: ScriptProject[]; query:
   const filtered = scripts.filter((script) => !search || script.name.toLowerCase().includes(search) || script.slug.toLowerCase().includes(search));
   if (filtered.length === 0) return <EmptyState text="No scripts found for this user." />;
   return (
-    <div className="max-h-[46vh] overflow-y-auto rounded-2xl border border-white/10">
+    <ScrollArea className="max-h-[46vh] rounded-2xl border border-white/10">
       {filtered.map((script) => (
         <div className="grid gap-2 border-b border-white/5 p-3 text-sm last:border-b-0 sm:grid-cols-[1fr_auto]" key={script.id}>
           <div className="min-w-0">
@@ -1752,7 +1770,7 @@ function OwnerUserScripts({ scripts, query }: { scripts: ScriptProject[]; query:
           <Badge tone={script.active ? "good" : "bad"}>{script.active ? "Active" : "Disabled"}</Badge>
         </div>
       ))}
-    </div>
+    </ScrollArea>
   );
 }
 
@@ -1780,7 +1798,7 @@ function OwnerUserKeys({
   });
   if (filtered.length === 0) return <EmptyState text="No keys found for this user." />;
   return (
-    <div className="max-h-[46vh] overflow-y-auto rounded-2xl border border-white/10">
+    <ScrollArea className="max-h-[46vh] rounded-2xl border border-white/10">
       {filtered.map((license) => {
         const visibleKey = visibleKeys[license.id];
         return (
@@ -1818,7 +1836,7 @@ function OwnerUserKeys({
           </div>
         );
       })}
-    </div>
+    </ScrollArea>
   );
 }
 
@@ -1872,10 +1890,10 @@ end`;
             <code className="block break-all rounded-xl bg-black/55 p-4 text-rose-100">/api/auth/validate</code>
           </Panel>
           <Panel title="JSON Payload">
-            <pre className="overflow-auto rounded-xl bg-black/55 p-4 text-sm text-slate-200">{payload}</pre>
+            <pre className="scroll-surface overflow-auto rounded-xl bg-black/55 p-4 text-sm text-slate-200">{payload}</pre>
           </Panel>
           <Panel title="Lua Example">
-            <pre className="overflow-auto rounded-xl bg-black/55 p-4 text-sm text-slate-200">{lua}</pre>
+            <pre className="scroll-surface overflow-auto rounded-xl bg-black/55 p-4 text-sm text-slate-200">{lua}</pre>
           </Panel>
           <Panel title="Response Rules">
             <ul className="grid gap-2 text-sm text-slate-300">
@@ -1964,7 +1982,7 @@ function Modal({ open, title, children, onClose }: { open: boolean; title: strin
   return createPortal(
     <div className="fixed inset-0 z-[1000] flex items-start justify-center overflow-y-auto bg-black/75 p-4 py-8 backdrop-blur-xl sm:items-center" onMouseDown={onClose}>
       <section
-        className="modal-pop glass-card max-h-[calc(100vh-4rem)] w-full max-w-2xl overflow-y-auto rounded-xl p-5 shadow-2xl shadow-black/60"
+        className="modal-pop glass-card scroll-surface max-h-[calc(100vh-4rem)] w-full max-w-2xl overflow-y-auto rounded-xl p-5 shadow-2xl shadow-black/60"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between gap-4 border-b border-white/[0.08] pb-4">

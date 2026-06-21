@@ -79,6 +79,16 @@ export function Badge({ tone = "neutral", children }: { tone?: "neutral" | "good
   return <span className={`h-fit rounded-full border px-2.5 py-0.5 font-mono text-xs font-medium ${tones[tone]}`}>{children}</span>;
 }
 
+export function ScrollArea({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={`scroll-surface min-h-0 overflow-auto ${className}`}>{children}</div>;
+}
+
 export function Tabs({
   tabs,
   active,
