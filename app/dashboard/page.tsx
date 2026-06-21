@@ -1031,7 +1031,8 @@ function KeyManagement(props: {
     const key = await props.revealLicenseKey(license);
     if (key) setVisibleKeys((current) => ({ ...current, [license.id]: key }));
   }
-  const keyInventoryGrid = "grid grid-cols-[180px_320px_220px_140px_120px_280px] items-center gap-4";
+  const keyInventoryGrid =
+    "grid grid-cols-[minmax(110px,1.05fr)_minmax(150px,1.35fr)_minmax(120px,1fr)_minmax(72px,0.7fr)_minmax(78px,0.72fr)_minmax(168px,1.1fr)] items-center gap-2";
 
   return (
     <div className="grid gap-5">
@@ -1071,9 +1072,9 @@ function KeyManagement(props: {
         </div>
         {props.licenses.length === 0 ? <EmptyState text="No keys generated yet." /> : null}
         {props.licenses.length > 0 && filteredLicenses.length === 0 ? <EmptyState text="No keys match those filters." /> : null}
-        <ScrollArea className="max-h-[56vh] rounded-2xl border border-white/10">
-          <div className="min-w-[1220px]">
-            <div className={`${keyInventoryGrid} sticky top-0 z-10 border-b border-white/10 bg-[#0b0b10]/95 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-600 backdrop-blur-xl`}>
+        <ScrollArea className="max-h-[56vh] overflow-x-hidden rounded-2xl border border-white/10">
+          <div className="w-full">
+            <div className={`${keyInventoryGrid} sticky top-0 z-10 border-b border-white/10 bg-[#0b0b10]/95 px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 backdrop-blur-xl`}>
               <span>Label</span>
               <span>Key</span>
               <span>Script</span>
@@ -1084,19 +1085,19 @@ function KeyManagement(props: {
             {filteredLicenses.map((license) => {
             const visibleKey = visibleKeys[license.id];
             return (
-              <div className={`${keyInventoryGrid} border-b border-white/5 px-4 py-3 text-sm transition hover:bg-white/[0.025] last:border-b-0`} key={license.id}>
+              <div className={`${keyInventoryGrid} border-b border-white/5 px-3 py-2.5 text-xs transition hover:bg-white/[0.025] last:border-b-0`} key={license.id}>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <KeyRound className="shrink-0 text-rose-500" size={17} />
+                    <KeyRound className="shrink-0 text-rose-500" size={15} />
                     <strong className="truncate text-white">{license.label}</strong>
                   </div>
-                  <span className="mt-1 block text-xs text-slate-600">{license.expiresAt ? `Expires ${new Date(license.expiresAt).toLocaleDateString()}` : "No expiry"}</span>
+                  <span className="mt-1 block text-[11px] text-slate-600">{license.expiresAt ? `Expires ${new Date(license.expiresAt).toLocaleDateString()}` : "No expiry"}</span>
                 </div>
-                <code className="block min-w-0 truncate rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs text-rose-100">
+                <code className="block min-w-0 truncate rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-[10px] text-rose-100">
                   {visibleKey || (license.hasStoredKey ? "AEGIS-****************" : "Legacy hash only")}
                 </code>
-                <span className="truncate text-slate-400">{props.scriptNames(license.scriptIds) || "No scripts"}</span>
-                <span className="leading-5 text-xs text-slate-500">
+                <span className="truncate text-[11px] text-slate-400">{props.scriptNames(license.scriptIds) || "No scripts"}</span>
+                <span className="text-[11px] leading-4 text-slate-500">
                   {license.maxUsers >= 1000000 ? "Shared" : `${license.users.length}/${license.maxUsers} users`}
                   <br />
                   {license.maxDevices >= 1000000 ? "Any device" : `${license.devices.length}/${license.maxDevices} devices`}
@@ -1105,14 +1106,14 @@ function KeyManagement(props: {
                   <Badge tone={license.active ? "good" : "bad"}>{license.active ? "Active" : "Revoked"}</Badge>
                   {!license.hasStoredKey ? <Badge tone="warn">Legacy</Badge> : null}
                 </div>
-                <div className="flex min-w-0 items-center gap-2">
+                <div className="flex min-w-0 items-center justify-end gap-1.5">
                   {visibleKey ? (
-                    <button className={`${dashboardTheme.ghostButton} px-3 py-2 text-xs`} onClick={() => props.copy(visibleKey)} type="button">
+                    <button className={`${dashboardTheme.ghostButton} px-2.5 py-1.5 text-[11px]`} onClick={() => props.copy(visibleKey)} type="button">
                       Copy
                     </button>
                   ) : null}
                   <button
-                    className={`${dashboardTheme.ghostButton} flex items-center gap-2 px-3 py-2 text-xs`}
+                    className={`${dashboardTheme.ghostButton} flex items-center gap-1.5 px-2.5 py-1.5 text-[11px]`}
                     disabled={!license.hasStoredKey}
                     onClick={() => {
                       if (visibleKey) {
@@ -1127,15 +1128,15 @@ function KeyManagement(props: {
                     }}
                     type="button"
                   >
-                      {visibleKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                      {visibleKey ? <EyeOff size={13} /> : <Eye size={13} />}
                       {visibleKey ? "Hide" : "Show"}
                     </button>
-                    <button className={`${dashboardTheme.ghostButton} flex items-center gap-2 px-3 py-2 text-xs`} onClick={() => props.toggleLicense(license)} type="button">
-                      <Power size={15} />
+                    <button className={`${dashboardTheme.ghostButton} flex items-center gap-1.5 px-2.5 py-1.5 text-[11px]`} onClick={() => props.toggleLicense(license)} type="button">
+                      <Power size={13} />
                       {license.active ? "Disable" : "Enable"}
                     </button>
-                    <button className={`${dashboardTheme.dangerButton} flex items-center gap-2 px-3 py-2 text-xs`} onClick={() => props.deleteLicense(license)} type="button">
-                      <Trash2 size={15} />
+                    <button className={`${dashboardTheme.dangerButton} flex items-center gap-1.5 px-2.5 py-1.5 text-[11px]`} onClick={() => props.deleteLicense(license)} type="button" title="Delete key">
+                      <Trash2 size={13} />
                     </button>
                 </div>
               </div>
