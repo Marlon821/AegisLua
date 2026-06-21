@@ -1,6 +1,7 @@
 "use client";
 
 import { Dispatch, FormEvent, SetStateAction, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -1952,17 +1953,28 @@ function CopyBox({ label, value, copy, compact = false }: { label: string; value
 }
 
 function Modal({ open, title, children, onClose }: { open: boolean; title: string; children: React.ReactNode; onClose: () => void }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/75 p-4 py-8 backdrop-blur-xl sm:items-center">
-      <section className="modal-pop glass-card max-h-[calc(100vh-4rem)] w-full max-w-2xl overflow-y-auto rounded-xl p-5 shadow-2xl shadow-black/60">
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[1000] flex items-start justify-center overflow-y-auto bg-black/75 p-4 py-8 backdrop-blur-xl sm:items-center" onMouseDown={onClose}>
+      <section
+        className="modal-pop glass-card max-h-[calc(100vh-4rem)] w-full max-w-2xl overflow-y-auto rounded-xl p-5 shadow-2xl shadow-black/60"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <div className="mb-4 flex items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
           <h2 className="text-xl font-bold text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>{title}</h2>
           <button className={`${dashboardTheme.ghostButton} px-3 py-2 text-xs`} onClick={onClose} type="button">Close</button>
         </div>
         {children}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
