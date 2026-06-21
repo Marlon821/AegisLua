@@ -10,14 +10,14 @@ export const dashboardTheme = {
   panel: "glass-card rounded-xl p-4 sm:p-5",
   panelSoft: "rounded-xl border border-white/[0.08] bg-white/[0.025] p-3.5 shadow-inner shadow-white/[0.02]",
   input:
-    "w-full rounded-lg border border-white/[0.09] bg-white/[0.035] px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-rose-500/50 focus:ring-2 focus:ring-rose-500/10",
+    "min-w-0 w-full rounded-lg border border-white/[0.09] bg-white/[0.035] px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-rose-500/50 focus:ring-2 focus:ring-rose-500/10",
   button:
     "rounded-lg bg-[#e5183a] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-rose-950/20 transition hover:-translate-y-0.5 hover:shadow-rose-500/20 disabled:cursor-not-allowed disabled:opacity-50",
   ghostButton:
     "rounded-lg border border-white/[0.09] bg-white/[0.035] px-4 py-2.5 text-sm font-medium text-white/70 transition hover:-translate-y-0.5 hover:border-rose-500/35 hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-50",
   dangerButton:
     "rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-100 transition hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-50",
-  label: "grid gap-1.5 text-xs font-medium uppercase tracking-[0.22em] text-[#7a6a6e]",
+  label: "grid min-w-0 gap-1.5 text-xs font-medium uppercase tracking-[0.22em] text-[#7a6a6e]",
 };
 
 export function Panel({

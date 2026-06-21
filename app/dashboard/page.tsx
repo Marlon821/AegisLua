@@ -504,7 +504,7 @@ export default function DashboardPage() {
             <p className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#e5183a] sm:block">{currentTab.eyebrow}</p>
             <h1 className="truncate text-lg font-bold text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>{currentTab.title}</h1>
           </div>
-          <div className="hidden grid-cols-3 gap-2 rounded-xl border border-white/[0.08] bg-white/[0.025] p-1.5 lg:grid lg:min-w-[360px]">
+          <div className="hidden w-full max-w-[280px] shrink-0 grid-cols-3 gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.025] p-1.5 xl:grid">
             <MiniMetric label="Scripts" value={scripts.length} />
             <MiniMetric label="Keys" value={licenses.length} />
             <MiniMetric label="Ads" value={campaigns.length} />
@@ -792,9 +792,9 @@ function Overview({
 
 function MiniMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg bg-black/35 px-3 py-2 text-center">
-      <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-white/25">{label}</span>
-      <strong className="mt-1 block text-lg text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>{value}</strong>
+    <div className="rounded-lg bg-black/35 px-2 py-1.5 text-center">
+      <span className="block truncate font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-white/25">{label}</span>
+      <strong className="mt-0.5 block text-base text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>{value}</strong>
     </div>
   );
 }
@@ -1570,7 +1570,7 @@ function UserManagement(props: {
                     Joined {new Date(managedUser.createdAt).toLocaleDateString()} - Last login {managedUser.lastLoginAt ? new Date(managedUser.lastLoginAt).toLocaleString() : "never"}
                   </p>
                 </div>
-                <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                   <Field label="Role">
                     <select
                       className={`${dashboardTheme.input} py-2.5`}
