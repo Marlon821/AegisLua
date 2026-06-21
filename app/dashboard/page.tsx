@@ -855,6 +855,8 @@ function ScriptManagement(props: {
       props.setScriptName(file.name.replace(/\.(lua|luau)$/i, ""));
     }
   }
+  const scriptInventoryGrid =
+    "grid grid-cols-[minmax(150px,1.35fr)_minmax(120px,1fr)_minmax(42px,0.35fr)_minmax(76px,0.48fr)_minmax(190px,1.05fr)] items-center gap-2";
 
   return (
     <div className="grid gap-5">
@@ -886,43 +888,42 @@ function ScriptManagement(props: {
         </div>
         {props.scripts.length === 0 ? <EmptyState text="No scripts yet. Protect a Lua file to generate your first loader." /> : null}
         {props.scripts.length > 0 && filteredScripts.length === 0 ? <EmptyState text="No scripts match that search." /> : null}
-        <ScrollArea className="max-h-[56vh] rounded-2xl border border-white/10">
-          <div className="min-w-[860px]">
-            <div className="sticky top-0 z-10 grid grid-cols-[1.2fr_1fr_0.55fr_0.6fr_0.9fr] border-b border-white/10 bg-[#0b0b10]/95 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-600 backdrop-blur-xl">
+        <ScrollArea className="max-h-[56vh] overflow-x-hidden rounded-2xl border border-white/10">
+          <div className="w-full">
+            <div className={`${scriptInventoryGrid} sticky top-0 z-10 border-b border-white/10 bg-[#0b0b10]/95 px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 backdrop-blur-xl`}>
               <span>Script</span>
               <span>ID</span>
               <span>Runs</span>
               <span>Status</span>
-              <span className="text-right">Actions</span>
+              <span>Actions</span>
             </div>
             {filteredScripts.map((script) => {
           const runs = props.logs.filter((log) => log.ok && log.scriptId === script.id).length;
           return (
-              <div className="grid grid-cols-[1.2fr_1fr_0.55fr_0.6fr_0.9fr] items-center gap-3 border-b border-white/5 px-4 py-3 text-sm last:border-b-0" key={script.id}>
+              <div className={`${scriptInventoryGrid} border-b border-white/5 px-3 py-2.5 text-xs transition hover:bg-white/[0.025] last:border-b-0`} key={script.id}>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <FileCode2 className="text-rose-500" size={18} />
+                    <FileCode2 className="shrink-0 text-rose-500" size={15} />
                     <div className="min-w-0">
                       <strong className="block truncate text-white">{script.name}</strong>
-                      <span className="text-xs text-slate-500">{script.sourceBytes ? `${Math.ceil(script.sourceBytes / 1024)} KB protected` : "No source stored"}</span>
+                      <span className="text-[11px] text-slate-500">{script.sourceBytes ? `${Math.ceil(script.sourceBytes / 1024)} KB protected` : "No source stored"}</span>
                     </div>
                   </div>
                 </div>
-                <code className="truncate text-xs text-rose-300">{script.slug}</code>
+                <code className="truncate text-[10px] text-rose-300">{script.slug}</code>
                 <strong className="text-white">{runs}</strong>
                 <Badge tone={script.active ? "good" : "bad"}>{script.active ? "Active" : "Disabled"}</Badge>
-                <div className="flex justify-end gap-2">
-                  <button className={`${dashboardTheme.button} flex items-center gap-2 px-3 py-2 text-xs`} onClick={() => props.copy(loaderSnippetFor(script.slug))} type="button">
-                    <Copy size={15} />
+                <div className="flex min-w-0 items-center justify-end gap-1.5">
+                  <button className={`${dashboardTheme.button} flex items-center gap-1.5 px-2.5 py-1.5 text-[11px]`} onClick={() => props.copy(loaderSnippetFor(script.slug))} type="button">
+                    <Copy size={13} />
                     Loader
                   </button>
-                  <button className={`${dashboardTheme.ghostButton} px-3 py-2 text-xs`} onClick={() => props.copy(script.slug)} type="button">ID</button>
-                  <button className={`${dashboardTheme.ghostButton} flex items-center gap-2 px-3 py-2 text-xs`} onClick={() => props.toggleScript(script)} type="button">
-                    <Power size={15} />
-                    {script.active ? "Disable" : "Enable"}
+                  <button className={`${dashboardTheme.ghostButton} px-2.5 py-1.5 text-[11px]`} onClick={() => props.copy(script.slug)} type="button">ID</button>
+                  <button className={`${dashboardTheme.ghostButton} flex items-center gap-1.5 px-2.5 py-1.5 text-[11px]`} onClick={() => props.toggleScript(script)} type="button" title={script.active ? "Disable script" : "Enable script"}>
+                    <Power size={13} />
                   </button>
-                  <button className={`${dashboardTheme.dangerButton} flex items-center gap-2 px-3 py-2 text-xs`} onClick={() => props.deleteScript(script)} type="button">
-                    <Trash2 size={15} />
+                  <button className={`${dashboardTheme.dangerButton} flex items-center gap-1.5 px-2.5 py-1.5 text-[11px]`} onClick={() => props.deleteScript(script)} type="button" title="Delete script">
+                    <Trash2 size={13} />
                   </button>
                 </div>
               </div>
@@ -1032,7 +1033,7 @@ function KeyManagement(props: {
     if (key) setVisibleKeys((current) => ({ ...current, [license.id]: key }));
   }
   const keyInventoryGrid =
-    "grid grid-cols-[minmax(110px,1.05fr)_minmax(150px,1.35fr)_minmax(120px,1fr)_minmax(72px,0.7fr)_minmax(78px,0.72fr)_minmax(168px,1.1fr)] items-center gap-2";
+    "grid grid-cols-[minmax(115px,1.05fr)_minmax(150px,1.4fr)_minmax(120px,1fr)_minmax(76px,0.72fr)_minmax(150px,0.95fr)] items-center gap-2";
 
   return (
     <div className="grid gap-5">
@@ -1079,7 +1080,6 @@ function KeyManagement(props: {
               <span>Key</span>
               <span>Script</span>
               <span>Limits</span>
-              <span>Status</span>
               <span>Actions</span>
             </div>
             {filteredLicenses.map((license) => {
@@ -1091,7 +1091,11 @@ function KeyManagement(props: {
                     <KeyRound className="shrink-0 text-rose-500" size={15} />
                     <strong className="truncate text-white">{license.label}</strong>
                   </div>
-                  <span className="mt-1 block text-[11px] text-slate-600">{license.expiresAt ? `Expires ${new Date(license.expiresAt).toLocaleDateString()}` : "No expiry"}</span>
+                  <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+                    <Badge tone={license.active ? "good" : "bad"}>{license.active ? "Active" : "Revoked"}</Badge>
+                    {!license.hasStoredKey ? <Badge tone="warn">Legacy</Badge> : null}
+                    <span className="text-[11px] text-slate-600">{license.expiresAt ? `Expires ${new Date(license.expiresAt).toLocaleDateString()}` : "No expiry"}</span>
+                  </div>
                 </div>
                 <code className="block min-w-0 truncate rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-[10px] text-rose-100">
                   {visibleKey || (license.hasStoredKey ? "AEGIS-****************" : "Legacy hash only")}
@@ -1102,10 +1106,6 @@ function KeyManagement(props: {
                   <br />
                   {license.maxDevices >= 1000000 ? "Any device" : `${license.devices.length}/${license.maxDevices} devices`}
                 </span>
-                <div className="flex min-w-0 flex-wrap gap-1.5">
-                  <Badge tone={license.active ? "good" : "bad"}>{license.active ? "Active" : "Revoked"}</Badge>
-                  {!license.hasStoredKey ? <Badge tone="warn">Legacy</Badge> : null}
-                </div>
                 <div className="flex min-w-0 items-center justify-end gap-1.5">
                   {visibleKey ? (
                     <button className={`${dashboardTheme.ghostButton} px-2.5 py-1.5 text-[11px]`} onClick={() => props.copy(visibleKey)} type="button">
@@ -1131,9 +1131,8 @@ function KeyManagement(props: {
                       {visibleKey ? <EyeOff size={13} /> : <Eye size={13} />}
                       {visibleKey ? "Hide" : "Show"}
                     </button>
-                    <button className={`${dashboardTheme.ghostButton} flex items-center gap-1.5 px-2.5 py-1.5 text-[11px]`} onClick={() => props.toggleLicense(license)} type="button">
+                    <button className={`${dashboardTheme.ghostButton} flex items-center gap-1.5 px-2.5 py-1.5 text-[11px]`} onClick={() => props.toggleLicense(license)} type="button" title={license.active ? "Disable key" : "Enable key"}>
                       <Power size={13} />
-                      {license.active ? "Disable" : "Enable"}
                     </button>
                     <button className={`${dashboardTheme.dangerButton} flex items-center gap-1.5 px-2.5 py-1.5 text-[11px]`} onClick={() => props.deleteLicense(license)} type="button" title="Delete key">
                       <Trash2 size={13} />
@@ -1537,6 +1536,9 @@ function UserManagement(props: {
     const key = await props.revealLicenseKey(license);
     if (key) setVisibleKeys((current) => ({ ...current, [license.id]: key }));
   }
+  const ownerUserGrid =
+    "grid grid-cols-[minmax(150px,1.2fr)_minmax(82px,0.58fr)_minmax(94px,0.64fr)_minmax(110px,0.72fr)_minmax(145px,0.86fr)_minmax(138px,0.78fr)] items-center gap-2";
+  const compactInput = `${dashboardTheme.input} h-8 px-2 py-1.5 text-[11px]`;
 
   return (
     <div className="grid gap-5">
@@ -1554,28 +1556,38 @@ function UserManagement(props: {
         <div className="mb-4 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
           Your owner account can promote admins, disable accounts, and manually assign subscription plans while payment automation is still being built.
         </div>
-        <ScrollArea className="max-h-[58vh] pr-1">
-        <div className="grid gap-3">
+        <ScrollArea className="max-h-[50vh] overflow-x-hidden pr-1">
+        <div className="grid gap-2">
           {props.users.length === 0 ? <EmptyState text="No users found." /> : null}
+          {props.users.length > 0 ? (
+            <div className={`${ownerUserGrid} hidden px-3 pb-1 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-slate-600 lg:grid`}>
+              <span>User</span>
+              <span>Role</span>
+              <span>Plan</span>
+              <span>Subscription</span>
+              <span>Renews</span>
+              <span>Actions</span>
+            </div>
+          ) : null}
           {props.users.map((managedUser) => (
-            <article className={dashboardTheme.panelSoft} key={managedUser.id}>
-              <div className="grid gap-4 2xl:grid-cols-[minmax(240px,1fr)_minmax(560px,1.8fr)] 2xl:items-start">
+            <article className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-3 transition hover:border-rose-500/20 hover:bg-white/[0.035]" key={managedUser.id}>
+              <div className={`${ownerUserGrid} max-lg:grid-cols-1 max-lg:items-stretch`}>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Users className="text-rose-500" size={18} />
+                    <Users className="shrink-0 text-rose-500" size={15} />
                     <strong className="text-white">{managedUser.name}</strong>
                     {managedUser.id === props.currentUserId ? <Badge tone="good">You</Badge> : null}
                     <Badge tone={managedUser.active ? "good" : "bad"}>{managedUser.active ? "Active" : "Disabled"}</Badge>
                   </div>
-                  <p className="mt-2 break-all text-sm text-slate-400">{managedUser.email}</p>
-                  <p className="mt-1 text-xs text-slate-600">
+                  <p className="mt-1 truncate text-xs text-slate-400">{managedUser.email}</p>
+                  <p className="mt-1 truncate text-[11px] text-slate-600">
                     Joined {new Date(managedUser.createdAt).toLocaleDateString()} - Last login {managedUser.lastLoginAt ? new Date(managedUser.lastLoginAt).toLocaleString() : "never"}
                   </p>
                 </div>
-                <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-                  <Field label="Role">
+                <label className="grid min-w-0 gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600 lg:block">
+                    <span className="lg:hidden">Role</span>
                     <select
-                      className={`${dashboardTheme.input} py-2.5`}
+                      className={compactInput}
                       value={managedUser.role}
                       onChange={(event) => props.updateUser(managedUser, { role: event.target.value as ManagedUser["role"] })}
                     >
@@ -1583,10 +1595,11 @@ function UserManagement(props: {
                       <option value="admin">Admin</option>
                       <option value="customer">Customer</option>
                     </select>
-                  </Field>
-                  <Field label="Plan">
+                </label>
+                <label className="grid min-w-0 gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600 lg:block">
+                    <span className="lg:hidden">Plan</span>
                     <select
-                      className={`${dashboardTheme.input} py-2.5`}
+                      className={compactInput}
                       value={managedUser.plan}
                       onChange={(event) => props.updateUser(managedUser, { plan: event.target.value as ManagedUser["plan"] })}
                     >
@@ -1594,10 +1607,11 @@ function UserManagement(props: {
                       <option value="pro">Pro</option>
                       <option value="enterprise">Enterprise</option>
                     </select>
-                  </Field>
-                  <Field label="Subscription">
+                </label>
+                <label className="grid min-w-0 gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600 lg:block">
+                    <span className="lg:hidden">Subscription</span>
                     <select
-                      className={`${dashboardTheme.input} py-2.5`}
+                      className={compactInput}
                       value={managedUser.subscriptionStatus}
                       onChange={(event) => props.updateUser(managedUser, { subscriptionStatus: event.target.value as ManagedUser["subscriptionStatus"] })}
                     >
@@ -1607,20 +1621,19 @@ function UserManagement(props: {
                       <option value="past_due">Past due</option>
                       <option value="canceled">Canceled</option>
                     </select>
-                  </Field>
-                  <Field label="Renews">
+                </label>
+                <label className="grid min-w-0 gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600 lg:block">
+                    <span className="lg:hidden">Renews</span>
                     <input
-                      className={`${dashboardTheme.input} py-2.5`}
+                      className={compactInput}
                       type="datetime-local"
                       value={toDateTimeLocal(managedUser.subscriptionRenewsAt)}
                       onChange={(event) => props.updateUser(managedUser, { subscriptionRenewsAt: event.target.value ? new Date(event.target.value).toISOString() : null })}
                     />
-                  </Field>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
+                </label>
+              <div className="flex min-w-0 flex-wrap justify-end gap-1.5">
                 <button
-                  className={`${dashboardTheme.ghostButton} px-3 py-2 text-xs`}
+                  className={`${dashboardTheme.ghostButton} px-2.5 py-1.5 text-[11px]`}
                   onClick={() => {
                     setSelectedUser(managedUser);
                     setDetailMode("profile");
@@ -1631,7 +1644,7 @@ function UserManagement(props: {
                   Details
                 </button>
                 <button
-                  className={`${managedUser.active ? dashboardTheme.dangerButton : dashboardTheme.ghostButton} px-3 py-2 text-xs`}
+                  className={`${managedUser.active ? dashboardTheme.dangerButton : dashboardTheme.ghostButton} px-2.5 py-1.5 text-[11px]`}
                   disabled={managedUser.id === props.currentUserId}
                   onClick={() => props.updateUser(managedUser, { active: !managedUser.active })}
                   type="button"
@@ -1639,13 +1652,14 @@ function UserManagement(props: {
                   {managedUser.active ? "Disable" : "Enable"}
                 </button>
                 <button
-                  className={`${dashboardTheme.dangerButton} px-3 py-2 text-xs`}
+                  className={`${dashboardTheme.dangerButton} px-2.5 py-1.5 text-[11px]`}
                   disabled={managedUser.id === props.currentUserId}
                   onClick={() => props.deleteUser(managedUser)}
                   type="button"
                 >
                   Delete
                 </button>
+              </div>
               </div>
             </article>
           ))}
