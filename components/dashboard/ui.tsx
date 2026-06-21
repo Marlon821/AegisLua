@@ -5,19 +5,19 @@ import { Crown } from "lucide-react";
 import { AnimatedNumber } from "@/components/motion";
 
 export const dashboardTheme = {
-  page: "min-h-screen bg-transparent text-slate-100",
-  sidebar: "border-b border-white/10 bg-black/80 p-4 backdrop-blur-2xl xl:sticky xl:top-0 xl:h-screen xl:border-b-0 xl:border-r",
-  panel: "glass-card rounded-2xl p-4 sm:p-5",
-  panelSoft: "rounded-2xl border border-white/10 bg-black/40 p-3.5 shadow-inner shadow-white/[0.02]",
+  page: "min-h-screen bg-transparent text-[#f0ecea]",
+  sidebar: "border-b border-white/[0.08] bg-[#050508]/90 p-3 backdrop-blur-2xl xl:sticky xl:top-0 xl:h-screen xl:border-b-0 xl:border-r",
+  panel: "glass-card rounded-xl p-4 sm:p-5",
+  panelSoft: "rounded-xl border border-white/[0.08] bg-white/[0.025] p-3.5 shadow-inner shadow-white/[0.02]",
   input:
-    "w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-rose-400 focus:ring-2 focus:ring-rose-500/10",
+    "w-full rounded-lg border border-white/[0.09] bg-white/[0.035] px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-rose-500/50 focus:ring-2 focus:ring-rose-500/10",
   button:
-    "rounded-xl bg-rose-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-rose-950/30 transition hover:-translate-y-0.5 hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50",
+    "rounded-lg bg-[#e5183a] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-rose-950/20 transition hover:-translate-y-0.5 hover:shadow-rose-500/20 disabled:cursor-not-allowed disabled:opacity-50",
   ghostButton:
-    "rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-slate-200 transition hover:-translate-y-0.5 hover:border-rose-500/40 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50",
+    "rounded-lg border border-white/[0.09] bg-white/[0.035] px-4 py-2.5 text-sm font-medium text-white/70 transition hover:-translate-y-0.5 hover:border-rose-500/35 hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-50",
   dangerButton:
-    "rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm font-bold text-rose-100 transition hover:bg-rose-400/20 disabled:cursor-not-allowed disabled:opacity-50",
-  label: "grid gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500",
+    "rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-100 transition hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-50",
+  label: "grid gap-1.5 text-xs font-medium uppercase tracking-[0.22em] text-[#7a6a6e]",
 };
 
 export function Panel({
@@ -34,8 +34,8 @@ export function Panel({
   return (
     <section className={dashboardTheme.panel} id={id}>
       <div className="mb-5 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <h2 className="text-lg font-black text-white sm:text-xl">{title}</h2>
-        {meta ? <span className="text-sm text-slate-500">{meta}</span> : null}
+        <h2 className="text-lg font-bold text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>{title}</h2>
+        {meta ? <span className="font-mono text-xs text-white/25">{meta}</span> : null}
       </div>
       {children}
     </section>
@@ -44,12 +44,12 @@ export function Panel({
 
 export function StatCard({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
-    <article className="animate-rise glass-card rounded-2xl p-4 transition hover:-translate-y-1">
-      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</span>
-      <strong className="mt-3 block text-2xl font-black text-white sm:text-3xl">
+    <article className="animate-rise glass-card rounded-xl p-4 transition hover:-translate-y-0.5">
+      <span className="font-mono text-xs uppercase tracking-[0.16em] text-white/25">{label}</span>
+      <strong className="mt-2 block text-2xl font-bold text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>
         {typeof value === "number" ? <AnimatedNumber value={value} /> : value}
       </strong>
-      {hint ? <p className="mt-2 text-xs text-slate-500">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-xs text-white/30">{hint}</p> : null}
     </article>
   );
 }
@@ -71,12 +71,12 @@ export function Field({
 
 export function Badge({ tone = "neutral", children }: { tone?: "neutral" | "good" | "bad" | "warn"; children: React.ReactNode }) {
   const tones = {
-    neutral: "border-white/10 bg-white/10 text-slate-200",
-    good: "border-rose-400/30 bg-rose-500/15 text-rose-100",
-    bad: "border-zinc-500/30 bg-zinc-500/10 text-zinc-400",
+    neutral: "border-white/10 bg-white/[0.05] text-white/60",
+    good: "border-rose-500/30 bg-rose-500/15 text-rose-200",
+    bad: "border-white/10 bg-white/[0.035] text-white/30",
     warn: "border-amber-300/20 bg-amber-400/15 text-amber-100",
   };
-  return <span className={`h-fit rounded-full border px-3 py-1 text-xs font-black ${tones[tone]}`}>{children}</span>;
+  return <span className={`h-fit rounded-full border px-2.5 py-0.5 font-mono text-xs font-medium ${tones[tone]}`}>{children}</span>;
 }
 
 export function Tabs({
@@ -89,17 +89,18 @@ export function Tabs({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 text-sm text-slate-300 xl:grid xl:overflow-visible xl:pb-0">
+    <div className="flex gap-2 overflow-x-auto pb-1 text-sm text-white/35 xl:grid xl:overflow-visible xl:pb-0">
       {tabs.map((tab) => (
         <button
-          className={`flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left font-semibold capitalize transition ${
-            active === tab.id ? "border border-rose-500/50 bg-rose-950/45 text-rose-100 shadow-lg shadow-rose-950/10" : "hover:bg-white/10 hover:text-white"
+          className={`relative flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium capitalize transition hover:translate-x-0.5 ${
+            active === tab.id ? "border border-rose-500/25 bg-rose-500/10 text-[#e5183a]" : "hover:bg-white/[0.05] hover:text-white"
           }`}
           key={tab.id}
           onClick={() => onChange(tab.id)}
           type="button"
         >
-          {tab.icon ? <tab.icon className={active === tab.id ? "text-rose-400" : "text-zinc-600"} size={16} /> : null}
+          {active === tab.id ? <span className="absolute bottom-1 left-0 top-1 w-0.5 rounded-r bg-[#e5183a]" /> : null}
+          {tab.icon ? <tab.icon className={active === tab.id ? "text-[#e5183a]" : "text-white/25"} size={15} /> : null}
           <span className="min-w-0 flex-1 truncate">{tab.label}</span>
           {tab.locked ? <Crown className="shrink-0 text-amber-300" size={14} /> : null}
         </button>
@@ -113,21 +114,21 @@ export function MiniBarChart({ points, label }: { points: Array<{ label: string;
   return (
     <div className={dashboardTheme.panelSoft}>
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-black text-white">{label}</h3>
-        <span className="text-xs text-slate-500">last 7 days</span>
+        <h3 className="font-bold text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>{label}</h3>
+        <span className="font-mono text-xs text-white/25">last 7 days</span>
       </div>
       <div className="flex h-32 items-end gap-2">
         {points.map((point, index) => (
           <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={point.label}>
-            <div className="flex h-24 w-full items-end rounded-lg bg-black/55 p-1">
+            <div className="flex h-24 w-full items-end rounded-lg bg-white/[0.025] p-1">
               <div
-                className="chart-bar w-full rounded-md bg-gradient-to-t from-rose-950 via-rose-700 to-rose-500"
+                className="chart-bar w-full rounded-md bg-[#e5183a]/65"
                 style={{ height: `${Math.max(5, (point.value / max) * 100)}%` }}
                 title={`${point.label}: ${point.value}`}
                 data-index={index}
               />
             </div>
-            <span className="w-full truncate text-center text-[11px] text-slate-500">{point.label}</span>
+            <span className="w-full truncate text-center font-mono text-[11px] text-white/25">{point.label}</span>
           </div>
         ))}
       </div>
@@ -136,5 +137,5 @@ export function MiniBarChart({ points, label }: { points: Array<{ label: string;
 }
 
 export function EmptyState({ text }: { text: string }) {
-  return <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-8 text-center text-sm text-slate-500">{text}</div>;
+  return <div className="rounded-xl border border-dashed border-white/[0.09] bg-white/[0.02] p-8 text-center text-sm text-white/30">{text}</div>;
 }

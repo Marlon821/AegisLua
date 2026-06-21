@@ -472,49 +472,53 @@ export default function DashboardPage() {
   const activeTabIsLocked = Boolean(tabs.find((tab) => tab.id === activeTab)?.premium && !canUsePremium);
 
   return (
-    <InteractiveShell className={`${dashboardTheme.page} xl:grid xl:grid-cols-[280px_1fr]`}>
-      <aside className={dashboardTheme.sidebar}>
-        <div className="flex flex-col gap-5 xl:h-full">
-          <Link className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3" href="/">
-            <span className="grid size-10 place-items-center rounded-xl bg-rose-500/10">
-              <Shield className="text-rose-500" size={18} />
+    <InteractiveShell className={`${dashboardTheme.page} h-screen overflow-hidden md:grid md:grid-cols-[224px_1fr]`}>
+      <aside className={`${dashboardTheme.sidebar} hidden min-h-0 md:flex md:flex-col`}>
+        <Link className="mb-4 flex h-11 items-center gap-2 border-b border-white/[0.08] pb-3" href="/">
+          <Shield className="text-[#e5183a]" size={17} />
+          <strong className="brand-word text-sm text-white">AEGISLUA</strong>
+        </Link>
+        <Tabs tabs={visibleTabs} active={activeTab} onChange={setActiveTab} />
+        <div className="mt-auto rounded-xl border border-white/[0.08] bg-white/[0.025] p-3">
+          <span className="font-mono text-xs uppercase tracking-[0.18em] text-white/25">Session</span>
+          <div className="mt-3 flex items-center gap-3">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#e5183a] text-xs font-bold text-white">
+              {user.name.slice(0, 1).toUpperCase()}
             </span>
             <div className="min-w-0">
-              <strong className="brand-word block text-sm text-white">AEGISLUA</strong>
-              <span className="block truncate text-xs text-slate-500">{user.email}</span>
+              <p className="truncate text-sm text-white">{user.name}</p>
+              <p className="truncate text-xs text-white/30">{user.plan || "free"} plan</p>
             </div>
-          </Link>
-        <Tabs tabs={visibleTabs} active={activeTab} onChange={setActiveTab} />
-          <div className="mt-auto hidden rounded-2xl border border-white/10 bg-black/35 p-4 xl:block">
-            <span className="text-xs uppercase tracking-[0.18em] text-slate-600">Session</span>
-            <p className="mt-2 text-sm text-slate-300">{user.name}</p>
-            <Badge tone={user.role === "owner" ? "good" : "neutral"}>{user.role}</Badge>
-            <button className={`${dashboardTheme.ghostButton} mt-4 w-full`} onClick={logout} type="button">Logout</button>
           </div>
+          <button className={`${dashboardTheme.ghostButton} mt-3 flex w-full items-center justify-center gap-2`} onClick={logout} type="button">
+            <Power size={14} />
+            Logout
+          </button>
         </div>
       </aside>
 
-      <section className="min-w-0">
-        <header className="sticky top-0 z-30 border-b border-white/10 bg-black/75 px-5 py-4 backdrop-blur-2xl sm:px-8">
-          <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 lg:flex-row lg:items-center">
-            <div>
-              <p className="font-mono text-xs font-black uppercase tracking-[0.24em] text-rose-500">{currentTab.eyebrow}</p>
-              <h1 className="mt-1 text-3xl font-black text-white sm:text-4xl">{currentTab.title}</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{currentTab.description}</p>
-            </div>
-            <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-2 lg:min-w-[390px]">
-              <MiniMetric label="Scripts" value={scripts.length} />
-              <MiniMetric label="Keys" value={licenses.length} />
-              <MiniMetric label="Ads" value={campaigns.length} />
-            </div>
+      <section className="flex min-w-0 flex-col overflow-hidden">
+        <header className="z-30 flex h-14 shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#050508]/55 px-4 backdrop-blur-xl sm:px-6">
+          <div className="min-w-0">
+            <p className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#e5183a] sm:block">{currentTab.eyebrow}</p>
+            <h1 className="truncate text-lg font-bold text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>{currentTab.title}</h1>
+          </div>
+          <div className="hidden grid-cols-3 gap-2 rounded-xl border border-white/[0.08] bg-white/[0.025] p-1.5 lg:grid lg:min-w-[360px]">
+            <MiniMetric label="Scripts" value={scripts.length} />
+            <MiniMetric label="Keys" value={licenses.length} />
+            <MiniMetric label="Ads" value={campaigns.length} />
           </div>
         </header>
 
-        <main className="mx-auto max-w-7xl p-5 sm:p-8">
+        <div className="border-b border-white/[0.08] bg-[#050508]/80 p-3 md:hidden">
+          <Tabs tabs={visibleTabs} active={activeTab} onChange={setActiveTab} />
+        </div>
+
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
         {error ? <div className="mb-5 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
         {notice ? <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">{notice}</div> : null}
 
-        <Reveal className="tab-motion min-w-0" key={activeTab}>
+        <Reveal className="tab-motion mx-auto min-w-0 max-w-7xl" key={activeTab}>
           {activeTabIsLocked ? <UpgradeLocked tabTitle={currentTab.title} /> : null}
           {!activeTabIsLocked && activeTab === "overview" ? (
             <Overview
@@ -787,9 +791,9 @@ function Overview({
 
 function MiniMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl bg-black/35 px-3 py-2 text-center">
-      <span className="block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-600">{label}</span>
-      <strong className="mt-1 block text-lg text-white">{value}</strong>
+    <div className="rounded-lg bg-black/35 px-3 py-2 text-center">
+      <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-white/25">{label}</span>
+      <strong className="mt-1 block text-lg text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>{value}</strong>
     </div>
   );
 }
@@ -1951,10 +1955,10 @@ function Modal({ open, title, children, onClose }: { open: boolean; title: strin
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/75 p-4 py-8 backdrop-blur-xl sm:items-center">
-      <section className="modal-pop max-h-[calc(100vh-4rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[#0b0b10]/95 p-4 shadow-2xl shadow-black/60 sm:p-5">
-        <div className="mb-4 flex items-center justify-between gap-4 border-b border-white/10 pb-4">
-          <h2 className="text-xl font-black text-white">{title}</h2>
-          <button className={dashboardTheme.ghostButton} onClick={onClose} type="button">Close</button>
+      <section className="modal-pop glass-card max-h-[calc(100vh-4rem)] w-full max-w-2xl overflow-y-auto rounded-xl p-5 shadow-2xl shadow-black/60">
+        <div className="mb-4 flex items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
+          <h2 className="text-xl font-bold text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>{title}</h2>
+          <button className={`${dashboardTheme.ghostButton} px-3 py-2 text-xs`} onClick={onClose} type="button">Close</button>
         </div>
         {children}
       </section>
