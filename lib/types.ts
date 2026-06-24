@@ -67,9 +67,9 @@ export type ClaimCampaign = {
   labelPrefix: string;
   apiKeyHash: string | null;
   apiKeyEncrypted: string | null;
-  deliveryKeyHash: string | null;
-  deliveryKeyEncrypted: string | null;
-  deliveryLicenseId: string | null;
+  deliveryKeyHash?: string | null;
+  deliveryKeyEncrypted?: string | null;
+  deliveryLicenseId?: string | null;
   steps: number;
   keyDurationHours: number;
   discordRequired: boolean;

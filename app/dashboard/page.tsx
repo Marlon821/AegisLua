@@ -6,7 +6,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Activity,
+  ArrowLeft,
+  ArrowRight,
   BarChart3,
+  Check,
+  CheckCircle2,
+  Clock3,
   Code2,
   Copy,
   Crown,
@@ -21,6 +26,7 @@ import {
   Search,
   Settings,
   Shield,
+  Sparkles,
   Trash2,
   Upload,
   Users,
@@ -151,7 +157,7 @@ const tabMeta: Record<string, { eyebrow: string; title: string; description: str
   deployment: {
     eyebrow: "Monetization",
     title: "Ad Systems",
-    description: "Connect existing keys to LootLabs claim links and track claim URLs.",
+    description: "Create LootLabs claim links that mint short-term keys for protected scripts.",
   },
   logs: {
     eyebrow: "Monitoring",
@@ -207,12 +213,12 @@ export default function DashboardPage() {
   const [claimName, setClaimName] = useState("");
   const [claimProvider] = useState<ClaimCampaign["provider"]>("lootlabs");
   const [claimApiKey, setClaimApiKey] = useState("");
-  const [claimDeliveryKey, setClaimDeliveryKey] = useState("");
   const [claimSteps, setClaimSteps] = useState(3);
   const [claimTierId, setClaimTierId] = useState(3);
   const [claimThemeId, setClaimThemeId] = useState(1);
   const [claimThumbnailUrl, setClaimThumbnailUrl] = useState("");
   const [claimDiscordRequired, setClaimDiscordRequired] = useState(false);
+  const [claimKeyDurationHours, setClaimKeyDurationHours] = useState(24);
   const [claimTtl, setClaimTtl] = useState(60);
   const [claimMaxRedemptions, setClaimMaxRedemptions] = useState(1);
 
@@ -354,10 +360,6 @@ export default function DashboardPage() {
       setError("Choose the script this ad system should unlock.");
       return;
     }
-    if (!claimDeliveryKey.trim()) {
-      setError("Paste the existing key this ad system should deliver.");
-      return;
-    }
     setNewClaimUrl("");
     const payload = await mutate("/api/admin/claims", {
       name: claimName,
@@ -365,22 +367,21 @@ export default function DashboardPage() {
       scriptIds: claimScriptIds,
       labelPrefix: `${claimName} key`,
       apiKey: claimApiKey || null,
-      deliveryKey: claimDeliveryKey,
       steps: claimSteps,
       tierId: claimTierId,
       themeId: claimThemeId,
       thumbnailUrl: claimThumbnailUrl || null,
       discordRequired: claimDiscordRequired,
-      maxUsers: 1000000,
-      maxDevices: 1000000,
+      keyDurationHours: claimKeyDurationHours,
+      maxUsers: 1,
+      maxDevices: 1,
       ticketTtlMinutes: claimTtl,
       maxRedemptions: claimMaxRedemptions,
-      licenseExpiresAt: expiresAt || null,
+      licenseExpiresAt: null,
     }, "Ad system created.");
     if (payload?.monetizedUrl || payload?.claimUrl) setNewClaimUrl(payload.monetizedUrl || payload.claimUrl);
     if (payload?.warning) setNotice(`Ad system created, but LootLabs returned: ${payload.warning}. The fallback AegisLua URL is shown.`);
     setClaimApiKey("");
-    setClaimDeliveryKey("");
   }
 
   async function createAutoRule(event: FormEvent) {
@@ -613,8 +614,6 @@ export default function DashboardPage() {
             claimProvider={claimProvider}
             claimApiKey={claimApiKey}
             setClaimApiKey={setClaimApiKey}
-            claimDeliveryKey={claimDeliveryKey}
-            setClaimDeliveryKey={setClaimDeliveryKey}
             claimSteps={claimSteps}
             setClaimSteps={setClaimSteps}
             claimTierId={claimTierId}
@@ -625,6 +624,8 @@ export default function DashboardPage() {
             setClaimThumbnailUrl={setClaimThumbnailUrl}
             claimDiscordRequired={claimDiscordRequired}
             setClaimDiscordRequired={setClaimDiscordRequired}
+            claimKeyDurationHours={claimKeyDurationHours}
+            setClaimKeyDurationHours={setClaimKeyDurationHours}
             claimTtl={claimTtl}
               setClaimTtl={setClaimTtl}
               claimMaxRedemptions={claimMaxRedemptions}
@@ -1290,8 +1291,6 @@ function AdSystems(props: {
   claimProvider: ClaimCampaign["provider"];
   claimApiKey: string;
   setClaimApiKey: (value: string) => void;
-  claimDeliveryKey: string;
-  setClaimDeliveryKey: (value: string) => void;
   claimSteps: number;
   setClaimSteps: (value: number) => void;
   claimTierId: number;
@@ -1302,6 +1301,8 @@ function AdSystems(props: {
   setClaimThumbnailUrl: (value: string) => void;
   claimDiscordRequired: boolean;
   setClaimDiscordRequired: (value: boolean) => void;
+  claimKeyDurationHours: number;
+  setClaimKeyDurationHours: (value: number) => void;
   claimTtl: number;
   setClaimTtl: (value: number) => void;
   claimMaxRedemptions: number;
@@ -1315,16 +1316,31 @@ function AdSystems(props: {
   deleteCampaign: (campaign: ClaimCampaign) => void;
 }) {
   const [creating, setCreating] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
+  const wizardSteps = [
+    { title: "Script", text: "Choose what this ad system unlocks." },
+    { title: "Provider", text: "Connect LootLabs and tune the checkpoint." },
+    { title: "Keys", text: "Set how long generated keys should last." },
+    { title: "Review", text: "Create the link and start sharing." },
+  ];
+  const selectedScriptName = props.scriptNames(props.claimScriptIds) || "No script selected";
+  const canContinue =
+    wizardStep === 0 ? props.claimName.trim().length > 0 && props.claimScriptIds.length > 0 : true;
+  function openWizard() {
+    setWizardStep(0);
+    setCreating(true);
+  }
+
   return (
     <div className="grid gap-5">
       <section className="grid gap-3 lg:grid-cols-4">
         {[
           ["1", "Choose script", "Pick the protected script this link should unlock."],
-          ["2", "Attach key", "Paste an existing key from Key Inventory."],
-          ["3", "Create LootLabs link", "AegisLua calls LootLabs and locks your claim page."],
-          ["4", "Share monetized URL", "Users complete LootLabs, return to AegisLua, then see the attached key."],
+          ["2", "Configure ads", "AegisLua creates the LootLabs destination for you."],
+          ["3", "Set lifetime", "Every visitor receives a fresh expiring key."],
+          ["4", "Share URL", "Users finish the checkpoint, return, and see their generated key once."],
         ].map(([step, title, text]) => (
-          <article className="glass-card rounded-2xl p-4" key={step}>
+          <article className="animate-rise glass-card rounded-2xl p-4 transition hover:-translate-y-1" key={step}>
             <span className="flex size-8 items-center justify-center rounded-full bg-rose-500 text-sm font-black text-white">{step}</span>
             <h3 className="mt-4 font-black text-white">{title}</h3>
             <p className="mt-2 text-sm leading-6 text-slate-400">{text}</p>
@@ -1336,12 +1352,12 @@ function AdSystems(props: {
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
           <div>
             <p className="max-w-2xl text-sm leading-6 text-slate-400">
-              Build LootLabs links that return users to AegisLua and reveal an existing key from your inventory.
+              Build LootLabs links that return users to AegisLua and mint a fresh short-term key for the selected script.
             </p>
           </div>
-          <button className={`${dashboardTheme.button} flex items-center justify-center gap-2`} onClick={() => setCreating(true)} type="button">
-            <Megaphone size={16} />
-            New ad system
+          <button className={`${dashboardTheme.button} magnetic-button flex items-center justify-center gap-2`} onClick={openWizard} type="button">
+            <Sparkles size={16} />
+            Launch setup
           </button>
         </div>
         {props.newClaimUrl ? <CopyBox label="Newest provider destination URL" value={props.newClaimUrl} copy={props.copy} compact /> : null}
@@ -1363,11 +1379,12 @@ function AdSystems(props: {
                     <strong className="text-lg text-white">{campaign.name}</strong>
                     <Badge tone={campaign.active ? "good" : "bad"}>{campaign.active ? "Active" : "Disabled"}</Badge>
                     <Badge>{providerLabel(campaign.provider)}</Badge>
-                    <Badge tone={campaign.deliveryLicenseId ? "good" : "bad"}>{campaign.deliveryLicenseId ? "Key attached" : "No key"}</Badge>
+                    <Badge tone="good">Auto keys</Badge>
                   </div>
                   <div className="mt-3 grid gap-2 text-sm text-slate-500 md:grid-cols-3">
                     <span><strong className="text-slate-300">Script:</strong> {props.scriptNames(campaign.scriptIds) || "No script selected"}</span>
                     <span><strong className="text-slate-300">Steps:</strong> {campaign.steps || 3}</span>
+                    <span><strong className="text-slate-300">Key lasts:</strong> {campaign.keyDurationHours || 24}h</span>
                     <span><strong className="text-slate-300">URL TTL:</strong> {campaign.ticketTtlMinutes}m</span>
                     <span><strong className="text-slate-300">Claims:</strong> {campaign.maxRedemptions}</span>
                     <span><strong className="text-slate-300">Discord:</strong> {campaign.discordRequired ? "Required" : "Off"}</span>
@@ -1387,61 +1404,209 @@ function AdSystems(props: {
         </div>
       </ScrollArea>
 
-      <Modal open={creating} title="Create Ad System" onClose={() => setCreating(false)}>
+      <Modal open={creating} title="Ad System Setup" onClose={() => setCreating(false)} wide>
           <form
-            className="grid gap-4"
+            className="grid gap-5"
             onSubmit={(event) => {
               props.createAdSystem(event);
               setCreating(false);
             }}
           >
-            <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
-              Configure a checkpoint system for one script. Users complete your provider flow, return to AegisLua, then receive the existing key you attach here.
+            <div className="relative overflow-hidden rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4">
+              <div className="absolute right-4 top-4 size-20 rounded-full bg-rose-500/20 blur-2xl" />
+              <div className="relative grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+                <div>
+                  <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-rose-300">Setup wizard</p>
+                  <h3 className="mt-2 text-2xl font-black text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>
+                    Build a monetized key flow
+                  </h3>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-rose-100/80">
+                    Pick a script, configure LootLabs, then AegisLua will generate a fresh expiring key for each successful claim.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-black/35 p-3 text-sm">
+                  <span className="text-slate-500">Unlocking</span>
+                  <strong className="mt-1 block max-w-48 truncate text-white">{selectedScriptName}</strong>
+                </div>
+              </div>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Name"><input className={dashboardTheme.input} value={props.claimName} onChange={(event) => props.setClaimName(event.target.value)} /></Field>
-              <Field label="Integration"><input className={dashboardTheme.input} readOnly value="LootLabs" /></Field>
+
+            <div className="grid gap-3 sm:grid-cols-4">
+              {wizardSteps.map((step, index) => (
+                <button
+                  className={`rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 ${
+                    index === wizardStep
+                      ? "border-rose-400/45 bg-rose-500/15 shadow-lg shadow-rose-950/25"
+                      : index < wizardStep
+                        ? "border-rose-400/25 bg-white/[0.04]"
+                        : "border-white/10 bg-black/25"
+                  }`}
+                  key={step.title}
+                  onClick={() => setWizardStep(index)}
+                  type="button"
+                >
+                  <span className={`grid size-7 place-items-center rounded-full text-xs font-black ${index <= wizardStep ? "bg-rose-500 text-white" : "bg-white/10 text-white/40"}`}>
+                    {index < wizardStep ? <Check size={14} /> : index + 1}
+                  </span>
+                  <strong className="mt-3 block text-sm text-white">{step.title}</strong>
+                  <span className="mt-1 block text-xs leading-5 text-slate-500">{step.text}</span>
+                </button>
+              ))}
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="LootLabs API key"><input className={dashboardTheme.input} value={props.claimApiKey} onChange={(event) => props.setClaimApiKey(event.target.value)} type="password" /></Field>
-              <SingleScriptSelect scripts={props.scripts} value={props.claimScriptIds[0] || ""} onChange={(scriptId) => props.setClaimScriptIds(scriptId ? [scriptId] : [])} />
+
+            <div className="grid gap-5 lg:grid-cols-[1fr_280px]">
+              <div className="min-h-[330px] rounded-2xl border border-white/10 bg-black/25 p-4">
+                {wizardStep === 0 ? (
+                  <div className="animate-rise grid gap-4">
+                    <Field label="Ad system name">
+                      <input className={dashboardTheme.input} placeholder="Example: Weekly public key" value={props.claimName} onChange={(event) => props.setClaimName(event.target.value)} />
+                    </Field>
+                    <SingleScriptSelect scripts={props.scripts} value={props.claimScriptIds[0] || ""} onChange={(scriptId) => props.setClaimScriptIds(scriptId ? [scriptId] : [])} />
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                      <div className="flex items-start gap-3">
+                        <Shield className="mt-0.5 text-rose-400" size={18} />
+                        <p className="text-sm leading-6 text-slate-400">
+                          Visitors only receive a key for this script after they complete the ad checkpoint. No existing key has to be pasted here.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {wizardStep === 1 ? (
+                  <div className="animate-rise grid gap-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Integration"><input className={dashboardTheme.input} readOnly value="LootLabs" /></Field>
+                      <Field label="LootLabs API key"><input className={dashboardTheme.input} value={props.claimApiKey} onChange={(event) => props.setClaimApiKey(event.target.value)} type="password" /></Field>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="LootLabs tasks"><input className={dashboardTheme.input} min={1} max={5} type="number" value={props.claimSteps} onChange={(event) => props.setClaimSteps(Number(event.target.value))} /></Field>
+                      <Field label="Ad tier">
+                        <select className={dashboardTheme.input} value={props.claimTierId} onChange={(event) => props.setClaimTierId(Number(event.target.value))}>
+                          <option value={1}>Trending and recommended</option>
+                          <option value={2}>Gaming offers</option>
+                          <option value={3}>Profit maximization</option>
+                          <option value={4}>Software products</option>
+                        </select>
+                      </Field>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Theme">
+                        <select className={dashboardTheme.input} value={props.claimThemeId} onChange={(event) => props.setClaimThemeId(Number(event.target.value))}>
+                          <option value={1}>Classic</option>
+                          <option value={2}>Sims</option>
+                          <option value={3}>Minecraft</option>
+                          <option value={4}>GTA</option>
+                          <option value={5}>Space</option>
+                        </select>
+                      </Field>
+                      <Field label="Thumbnail URL"><input className={dashboardTheme.input} value={props.claimThumbnailUrl} onChange={(event) => props.setClaimThumbnailUrl(event.target.value)} /></Field>
+                    </div>
+                    <label className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/35 px-4 py-3 text-sm text-slate-300">
+                      Discord required
+                      <input checked={props.claimDiscordRequired} className="size-5 accent-rose-500" onChange={(event) => props.setClaimDiscordRequired(event.target.checked)} type="checkbox" />
+                    </label>
+                  </div>
+                ) : null}
+
+                {wizardStep === 2 ? (
+                  <div className="animate-rise grid gap-4">
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      {[1, 24, 168].map((hours) => (
+                        <button
+                          className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${props.claimKeyDurationHours === hours ? "border-rose-400/45 bg-rose-500/15" : "border-white/10 bg-black/35"}`}
+                          key={hours}
+                          onClick={() => props.setClaimKeyDurationHours(hours)}
+                          type="button"
+                        >
+                          <Clock3 className="text-rose-400" size={18} />
+                          <strong className="mt-3 block text-white">{hours === 1 ? "1 hour" : hours === 24 ? "1 day" : "1 week"}</strong>
+                          <span className="mt-1 block text-xs text-slate-500">Generated key lifetime</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <Field label="Custom hours"><input className={dashboardTheme.input} min={1} max={8760} type="number" value={props.claimKeyDurationHours} onChange={(event) => props.setClaimKeyDurationHours(Number(event.target.value))} /></Field>
+                      <Field label="Claim URL lifetime"><input className={dashboardTheme.input} min={5} type="number" value={props.claimTtl} onChange={(event) => props.setClaimTtl(Number(event.target.value))} /></Field>
+                      <Field label="Max claims per URL"><input className={dashboardTheme.input} min={1} type="number" value={props.claimMaxRedemptions} onChange={(event) => props.setClaimMaxRedemptions(Number(event.target.value))} /></Field>
+                    </div>
+                    <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
+                      Each successful redemption creates a new personal key with one user slot and one device slot.
+                    </div>
+                  </div>
+                ) : null}
+
+                {wizardStep === 3 ? (
+                  <div className="animate-rise grid gap-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <InfoRow label="Name" value={props.claimName || "Unnamed"} />
+                      <InfoRow label="Script" value={selectedScriptName} />
+                      <InfoRow label="Provider" value="LootLabs" />
+                      <InfoRow label="Generated key lasts" value={`${props.claimKeyDurationHours} hour${props.claimKeyDurationHours === 1 ? "" : "s"}`} />
+                      <InfoRow label="Checkpoint tasks" value={`${props.claimSteps}`} />
+                      <InfoRow label="Max claims per URL" value={`${props.claimMaxRedemptions}`} />
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="text-rose-400" size={20} />
+                        <p className="text-sm leading-6 text-slate-300">
+                          Ready. Creating this system will generate your first LootLabs URL or a fallback AegisLua claim URL.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <aside className="glass-card rounded-2xl p-4">
+                <p className="font-mono text-xs font-black uppercase tracking-[0.2em] text-rose-400">Live summary</p>
+                <div className="mt-4 grid gap-3 text-sm">
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                    <span className="text-slate-500">Script</span>
+                    <strong className="mt-1 block truncate text-white">{selectedScriptName}</strong>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                    <span className="text-slate-500">Key behavior</span>
+                    <strong className="mt-1 block text-white">Auto-generate on claim</strong>
+                    <span className="mt-1 block text-xs text-slate-500">{props.claimKeyDurationHours}h lifetime, 1 user, 1 device</span>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                    <span className="text-slate-500">Provider</span>
+                    <strong className="mt-1 block text-white">{props.claimApiKey ? "LootLabs connected" : "Fallback-ready"}</strong>
+                  </div>
+                </div>
+              </aside>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Key to deliver"><input className={dashboardTheme.input} value={props.claimDeliveryKey} onChange={(event) => props.setClaimDeliveryKey(event.target.value)} type="password" /></Field>
-              <Field label="LootLabs tasks"><input className={dashboardTheme.input} min={1} max={5} type="number" value={props.claimSteps} onChange={(event) => props.setClaimSteps(Number(event.target.value))} /></Field>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <button
+                className={dashboardTheme.ghostButton}
+                disabled={wizardStep === 0}
+                onClick={() => setWizardStep((step) => Math.max(0, step - 1))}
+                type="button"
+              >
+                <ArrowLeft size={15} />
+                Back
+              </button>
+              <div className="flex gap-2 sm:justify-end">
+                {wizardStep < wizardSteps.length - 1 ? (
+                  <button
+                    className={`${dashboardTheme.button} magnetic-button flex flex-1 items-center justify-center gap-2 sm:flex-none`}
+                    disabled={!canContinue}
+                    onClick={() => setWizardStep((step) => Math.min(wizardSteps.length - 1, step + 1))}
+                    type="button"
+                  >
+                    Continue
+                    <ArrowRight size={15} />
+                  </button>
+                ) : (
+                  <button className={`${dashboardTheme.button} magnetic-button flex flex-1 items-center justify-center gap-2 sm:flex-none`} type="submit">
+                    <Megaphone size={16} />
+                    Create ad system
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Ad tier">
-                <select className={dashboardTheme.input} value={props.claimTierId} onChange={(event) => props.setClaimTierId(Number(event.target.value))}>
-                  <option value={1}>Trending and recommended</option>
-                  <option value={2}>Gaming offers</option>
-                  <option value={3}>Profit maximization</option>
-                  <option value={4}>Software products</option>
-                </select>
-              </Field>
-              <Field label="Theme">
-                <select className={dashboardTheme.input} value={props.claimThemeId} onChange={(event) => props.setClaimThemeId(Number(event.target.value))}>
-                  <option value={1}>Classic</option>
-                  <option value={2}>Sims</option>
-                  <option value={3}>Minecraft</option>
-                  <option value={4}>GTA</option>
-                  <option value={5}>Space</option>
-                </select>
-              </Field>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Claim URL lifetime"><input className={dashboardTheme.input} min={5} type="number" value={props.claimTtl} onChange={(event) => props.setClaimTtl(Number(event.target.value))} /></Field>
-              <Field label="Max claims"><input className={dashboardTheme.input} min={1} type="number" value={props.claimMaxRedemptions} onChange={(event) => props.setClaimMaxRedemptions(Number(event.target.value))} /></Field>
-            </div>
-            <Field label="Thumbnail URL"><input className={dashboardTheme.input} value={props.claimThumbnailUrl} onChange={(event) => props.setClaimThumbnailUrl(event.target.value)} /></Field>
-            <label className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/35 px-4 py-3 text-sm text-slate-300">
-              Discord required
-              <input checked={props.claimDiscordRequired} className="size-5 accent-rose-500" onChange={(event) => props.setClaimDiscordRequired(event.target.checked)} type="checkbox" />
-            </label>
-            <button className={`${dashboardTheme.button} magnetic-button flex items-center justify-center gap-2`} type="submit">
-              <Megaphone size={16} />
-              Create ad system
-            </button>
           </form>
       </Modal>
     </div>
@@ -1986,7 +2151,19 @@ function CopyBox({ label, value, copy, compact = false }: { label: string; value
   );
 }
 
-function Modal({ open, title, children, onClose }: { open: boolean; title: string; children: React.ReactNode; onClose: () => void }) {
+function Modal({
+  open,
+  title,
+  children,
+  onClose,
+  wide = false,
+}: {
+  open: boolean;
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+  wide?: boolean;
+}) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -1998,7 +2175,7 @@ function Modal({ open, title, children, onClose }: { open: boolean; title: strin
   return createPortal(
     <div className="fixed inset-0 z-[1000] flex items-start justify-center overflow-y-auto bg-black/75 p-4 py-8 backdrop-blur-xl sm:items-center" onMouseDown={onClose}>
       <section
-        className="modal-pop glass-card scroll-surface max-h-[calc(100vh-4rem)] w-full max-w-2xl overflow-y-auto rounded-xl p-5 shadow-2xl shadow-black/60"
+        className={`modal-pop glass-card scroll-surface max-h-[calc(100vh-4rem)] w-full ${wide ? "max-w-5xl" : "max-w-2xl"} overflow-y-auto rounded-xl p-5 shadow-2xl shadow-black/60`}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between gap-4 border-b border-white/[0.08] pb-4">

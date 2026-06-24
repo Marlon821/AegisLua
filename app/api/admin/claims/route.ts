@@ -4,7 +4,6 @@ import { createTicketForCampaign, claimTicketUrl } from "@/lib/claims";
 import { createId, decryptSecret, encryptSecret, hashKey } from "@/lib/crypto";
 import { createLootLabsLink } from "@/lib/lootlabs";
 import {
-  findLicenseByHash,
   listClaimCampaigns,
   listClaimRedemptions,
   listClaimTickets,
@@ -12,7 +11,7 @@ import {
   saveClaimCampaign,
   saveClaimTicket,
 } from "@/lib/store";
-import { ClaimCampaign, ClaimProvider, LicenseRecord, ScriptProject, UserAccount } from "@/lib/types";
+import { ClaimCampaign, ClaimProvider, ScriptProject, UserAccount } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -34,10 +33,6 @@ function canSeeCampaign(user: UserAccount, campaign: ClaimCampaign) {
 
 function canUseScript(user: UserAccount, script: ScriptProject) {
   return user.role === "owner" || user.role === "admin" || script.ownerId === user.id;
-}
-
-function canUseLicense(user: UserAccount, license: LicenseRecord | null) {
-  return Boolean(license && (user.role === "owner" || user.role === "admin" || license.ownerId === user.id));
 }
 
 export async function GET(request: NextRequest) {
@@ -75,14 +70,10 @@ export async function POST(request: NextRequest) {
   const now = new Date().toISOString();
   const provider = providers.includes(body.provider) ? body.provider : "lootlabs";
   const scriptIds: string[] = Array.isArray(body.scriptIds) ? body.scriptIds.map(String).filter(Boolean) : [];
-  const deliveryKey = String(body.deliveryKey || "").trim();
-  const deliveryKeyHash = deliveryKey ? hashKey(deliveryKey) : null;
-  const deliveryLicense = deliveryKeyHash ? await findLicenseByHash(deliveryKeyHash) : null;
-
-  if (!deliveryKey || !deliveryLicense || !canUseLicense(user, deliveryLicense)) {
-    return NextResponse.json({ error: "Paste an existing key from Key Inventory before creating an ad system." }, { status: 400 });
-  }
   const allowedScriptIds = new Set((await listScripts()).filter((script) => canUseScript(user, script)).map((script) => script.id));
+  if (scriptIds.length === 0) {
+    return NextResponse.json({ error: "Choose the script this ad system should unlock." }, { status: 400 });
+  }
   if (scriptIds.some((scriptId) => !allowedScriptIds.has(scriptId))) {
     return NextResponse.json({ error: "Choose scripts from your own workspace." }, { status: 403 });
   }
@@ -98,9 +89,9 @@ export async function POST(request: NextRequest) {
     labelPrefix: String(body.labelPrefix || "Claimed license"),
     apiKeyHash: apiKey ? hashKey(apiKey) : null,
     apiKeyEncrypted: apiKey ? encryptSecret(apiKey) : null,
-    deliveryKeyHash,
-    deliveryKeyEncrypted: encryptSecret(deliveryKey),
-    deliveryLicenseId: deliveryLicense.id,
+    deliveryKeyHash: null,
+    deliveryKeyEncrypted: null,
+    deliveryLicenseId: null,
     steps: safeNumber(body.steps, 3, 1, 10),
     keyDurationHours: safeNumber(body.keyDurationHours, 24, 1, 24 * 365),
     discordRequired: Boolean(body.discordRequired),

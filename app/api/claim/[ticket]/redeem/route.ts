@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ticketStatus } from "@/lib/claims";
-import { createClaimSignature, createId, decryptSecret, hashKey, parseClaimToken } from "@/lib/crypto";
+import { createClaimSignature, createId, createPlainKey, encryptSecret, hashKey, parseClaimToken } from "@/lib/crypto";
 import {
   appendClaimRedemption,
   getClaimCampaign,
   getClaimTicket,
-  getLicense,
+  saveLicense,
   saveClaimTicket,
 } from "@/lib/store";
+import { LicenseRecord } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -59,22 +60,32 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ti
   if (ticketStatus(ticket) === "expired") return logAndDeny("claim_expired", 403, campaign.id, ticket.id);
   if (ticketStatus(ticket) === "redeemed") return logAndDeny("claim_already_redeemed", 403, campaign.id, ticket.id);
   if (campaign.scriptIds.length === 0) return logAndDeny("claim_has_no_scripts", 400, campaign.id, ticket.id);
-  if (!campaign.deliveryKeyEncrypted || !campaign.deliveryLicenseId) return logAndDeny("ad_system_has_no_delivery_key", 400, campaign.id, ticket.id);
-
-  const license = await getLicense(campaign.deliveryLicenseId);
-  if (!license || !license.active) return logAndDeny("delivery_key_disabled", 403, campaign.id, ticket.id);
-  if (license.expiresAt && Date.now() > new Date(license.expiresAt).getTime()) return logAndDeny("delivery_key_expired", 403, campaign.id, ticket.id);
-
-  let plainKey = "";
-  try {
-    plainKey = decryptSecret(campaign.deliveryKeyEncrypted);
-  } catch {
-    return logAndDeny("delivery_key_decrypt_failed", 500, campaign.id, ticket.id);
-  }
 
   const now = new Date().toISOString();
+  const plainKey = createPlainKey();
+  const keyDurationHours = Math.max(1, Math.min(24 * 365, Math.floor(Number(campaign.keyDurationHours || 24))));
+  const expiresAt = new Date(Date.now() + keyDurationHours * 60 * 60 * 1000).toISOString();
+  const license: LicenseRecord = {
+    id: createId(),
+    ownerId: campaign.ownerId || null,
+    keyHash: hashKey(plainKey),
+    keyEncrypted: encryptSecret(plainKey),
+    label: `${campaign.labelPrefix || campaign.name || "Ad claim"} ${new Date().toLocaleDateString("en-US")}`,
+    active: true,
+    scriptIds: campaign.scriptIds,
+    maxUsers: Math.max(1, Math.floor(Number(campaign.maxUsers || 1))),
+    users: [],
+    maxDevices: Math.max(1, Math.floor(Number(campaign.maxDevices || 1))),
+    devices: [],
+    expiresAt,
+    createdAt: now,
+    updatedAt: now,
+    lastUsedAt: null,
+    lastUsername: null,
+  };
   ticket.redeemedCount += 1;
   ticket.updatedAt = now;
+  await saveLicense(license);
   await saveClaimTicket(ticket);
   await appendClaimRedemption({
     id: createId(),
