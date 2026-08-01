@@ -57,18 +57,18 @@ export default function ClaimPage({ params }: { params: Promise<{ ticket: string
       <div className="liquid-grid pointer-events-none absolute inset-0" />
       <Reveal className="glass-card relative w-full max-w-xl rounded-3xl p-6">
         <Link className="mb-8 flex items-center gap-3" href="/">
-          <Shield className="text-rose-500" size={18} />
+          <Shield className="text-lime-300" size={18} />
           <strong className="brand-word text-sm text-white">AEGISLUA</strong>
         </Link>
 
-        <p className="font-mono text-xs font-black uppercase tracking-[0.28em] text-rose-500">Key Claim</p>
+        <p className="eyebrow"> <span /> Key Claim</p>
         <h1 className="mt-3 text-4xl font-black text-white">Redeem your script key</h1>
         <p className="mt-4 text-sm leading-6 text-slate-400">
           Your key is generated server-side and shown once. Keep it somewhere safe after redeeming.
         </p>
 
         {loading ? <div className="mt-6 rounded-xl border border-white/10 bg-black/45 p-4 text-slate-300">Checking claim link...</div> : null}
-        {error ? <div className="mt-6 rounded-xl border border-rose-400/30 bg-rose-400/10 p-4 text-sm text-rose-100">{error}</div> : null}
+        {error ? <div className="mt-6 rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">{error}</div> : null}
 
         {claim ? (
           <div className="mt-6 grid gap-3 rounded-2xl border border-white/10 bg-black/45 p-4 text-sm">
@@ -81,13 +81,13 @@ export default function ClaimPage({ params }: { params: Promise<{ ticket: string
         ) : null}
 
         {key ? (
-          <div className="mt-6 rounded-xl border border-rose-400/30 bg-rose-500/10 p-4">
-            <span className="text-sm font-bold text-rose-100">Your key, shown once</span>
-            <code className="mt-3 block break-all rounded-lg bg-black/55 p-3 text-rose-100">{key}</code>
+          <div className="mt-6 rounded-xl border border-lime-300/30 bg-lime-300/10 p-4">
+            <span className="text-sm font-bold text-lime-100">Your key, shown once</span>
+            <code className="mt-3 block break-all rounded-lg bg-black/55 p-3 text-lime-100">{key}</code>
           </div>
         ) : (
           <button
-            className="magnetic-button mt-6 w-full rounded-xl bg-rose-600 px-5 py-3 font-black text-white shadow-lg shadow-rose-950/30 transition hover:-translate-y-0.5 hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="magnetic-button mt-6 w-full rounded-xl bg-lime-300 px-5 py-3 font-black text-[#101409] shadow-lg shadow-lime-950/30 transition hover:-translate-y-0.5 hover:bg-lime-200 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!claim || claim.status !== "available" || redeeming}
             onClick={redeem}
             type="button"

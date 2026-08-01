@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CheckCircle2, Shield } from "lucide-react";
+import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { InteractiveShell, Reveal } from "@/components/motion";
 
 const plans = [
@@ -42,40 +42,40 @@ export default function PricingPage() {
       <nav className="relative mx-4 mt-4 rounded-2xl glass-shell">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3">
           <Link className="flex items-center gap-3" href="/">
-            <Shield className="text-rose-500" size={18} />
+            <ShieldCheck className="text-lime-300" size={18} />
             <span className="brand-word text-sm text-white">AEGISLUA</span>
           </Link>
           <div className="flex items-center gap-3 text-sm">
             <Link className="px-3 py-2 font-semibold text-zinc-500 transition hover:text-white" href="/">Home</Link>
-            <Link className="magnetic-button rounded-xl bg-rose-600 px-5 py-3 font-black text-white transition hover:bg-rose-500" href="/login?mode=signup">Get started</Link>
+            <Link className="action-button action-button-small action-button-primary" href="/login?mode=signup">Get started</Link>
           </div>
         </div>
       </nav>
 
       <section className="relative mx-auto max-w-7xl px-6 py-24">
         <Reveal>
-          <p className="font-mono text-xs uppercase tracking-[0.28em] text-rose-500">Pricing</p>
+          <p className="eyebrow"><span /> Pricing</p>
           <div className="mt-5 flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <h1 className="text-5xl font-black text-white">Simple pricing.</h1>
             <div className="flex items-center gap-3 text-sm">
               <button className={annual ? "text-zinc-500" : "font-semibold text-white"} onClick={() => setAnnual(false)} type="button">Monthly</button>
               <button
                 aria-pressed={annual}
-                className={`h-6 w-12 rounded-full p-1 transition ${annual ? "bg-rose-600" : "bg-zinc-800"}`}
+                className={`h-6 w-12 rounded-full p-1 transition ${annual ? "bg-lime-300" : "bg-zinc-800"}`}
                 onClick={() => setAnnual((value) => !value)}
                 type="button"
               >
                 <span className={`block h-4 w-4 rounded-full bg-white transition ${annual ? "translate-x-6" : ""}`} />
               </button>
-              <button className={annual ? "font-semibold text-white" : "text-zinc-500"} onClick={() => setAnnual(true)} type="button">Annual <span className="text-rose-500">-25%</span></button>
+              <button className={annual ? "font-semibold text-white" : "text-zinc-500"} onClick={() => setAnnual(true)} type="button">Annual <span className="text-lime-300">-25%</span></button>
             </div>
           </div>
         </Reveal>
 
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
           {plans.map((plan, index) => (
-            <Reveal className={`glass-card relative rounded-2xl p-8 ${plan.featured ? "border-rose-500/40 shadow-rose-950/30" : ""}`} delay={index * 110} key={plan.name}>
-              {plan.featured ? <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-rose-600 px-5 py-1 text-xs font-black text-white">MOST POPULAR</span> : null}
+            <Reveal className={`glass-card relative rounded-2xl p-8 ${plan.featured ? "border-lime-300/40 shadow-lime-950/30" : ""}`} delay={index * 110} key={plan.name}>
+              {plan.featured ? <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-lime-300 px-5 py-1 text-xs font-black text-[#101409]">MOST POPULAR</span> : null}
               <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-600">{plan.tier}</p>
               <h2 className="mt-4 text-3xl font-black text-white">{plan.name}</h2>
               <div className="mt-3 flex items-end gap-2">
@@ -86,12 +86,12 @@ export default function PricingPage() {
               <ul className="mt-8 grid gap-4 text-sm text-zinc-400">
                 {plan.features.map((feature) => (
                   <li className="flex items-center gap-3" key={feature}>
-                    <CheckCircle2 className="text-rose-500" size={16} />
+                    <CheckCircle2 className="text-lime-300" size={16} />
                     {feature}
                   </li>
                 ))}
               </ul>
-              <Link className={`magnetic-button mt-10 block rounded-xl px-5 py-3 text-center font-black transition ${plan.featured ? "bg-rose-600 text-white hover:bg-rose-500" : "border border-white/10 bg-white/[0.03] text-white hover:bg-white/10"}`} href="/login?mode=signup">
+              <Link className={`mt-10 block rounded-xl px-5 py-3 text-center font-black transition ${plan.featured ? "bg-lime-300 text-[#101409] hover:bg-lime-200" : "border border-white/10 bg-white/[0.03] text-white hover:bg-white/10"}`} href="/login?mode=signup">
                 {plan.cta}
               </Link>
             </Reveal>

@@ -477,14 +477,14 @@ export default function DashboardPage() {
     <InteractiveShell className={`${dashboardTheme.page} h-screen overflow-hidden md:grid md:grid-cols-[224px_1fr]`}>
       <aside className={`${dashboardTheme.sidebar} hidden min-h-0 md:flex md:flex-col`}>
         <Link className="mb-4 flex h-11 items-center gap-2 border-b border-white/[0.08] pb-3" href="/">
-          <Shield className="text-[#e5183a]" size={17} />
+          <Shield className="text-[#bdf76a]" size={17} />
           <strong className="brand-word text-sm text-white">AEGISLUA</strong>
         </Link>
         <Tabs tabs={visibleTabs} active={activeTab} onChange={setActiveTab} />
         <div className="mt-auto rounded-xl border border-white/[0.08] bg-white/[0.025] p-3">
           <span className="font-mono text-xs uppercase tracking-[0.18em] text-white/25">Session</span>
           <div className="mt-3 flex items-center gap-3">
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#e5183a] text-xs font-bold text-white">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#bdf76a] text-xs font-bold text-white">
               {user.name.slice(0, 1).toUpperCase()}
             </span>
             <div className="min-w-0">
@@ -502,7 +502,7 @@ export default function DashboardPage() {
       <section className="flex min-w-0 flex-col overflow-hidden">
         <header className="z-30 flex h-14 shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#050508]/55 px-4 backdrop-blur-xl sm:px-6">
           <div className="min-w-0">
-            <p className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#e5183a] sm:block">{currentTab.eyebrow}</p>
+            <p className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#bdf76a] sm:block">{currentTab.eyebrow}</p>
             <h1 className="truncate text-lg font-bold text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>{currentTab.title}</h1>
           </div>
           <div className="hidden w-full max-w-[280px] shrink-0 grid-cols-3 gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.025] p-1.5 xl:grid">
@@ -517,7 +517,7 @@ export default function DashboardPage() {
         </div>
 
         <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-        {error ? <div className="mb-5 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
+        {error ? <div className="mb-5 rounded-2xl border border-lime-300/30 bg-lime-300/10 px-4 py-3 text-sm text-lime-100">{error}</div> : null}
         {notice ? <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">{notice}</div> : null}
 
         <Reveal className="tab-motion mx-auto min-w-0 max-w-7xl" key={activeTab}>
@@ -673,7 +673,7 @@ function CustomerPortal({ user, logout, deleteOwnAccount }: { user: AppUser; log
         <section className="glass-card rounded-3xl p-6 sm:p-8">
           <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
             <div>
-              <p className="font-mono text-xs font-black uppercase tracking-[0.24em] text-rose-500">Customer portal</p>
+              <p className="font-mono text-xs font-black uppercase tracking-[0.24em] text-lime-300">Customer portal</p>
               <h1 className="mt-2 text-4xl font-black text-white">Welcome, {user.name}</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
                 Your account is on the Free customer plan. You can protect up to 3 scripts once customer workspaces are enabled. Owner approval is required for higher limits.
@@ -738,10 +738,10 @@ function SettingsPanel({ user, logout, deleteOwnAccount }: { user: AppUser; logo
           Logout
         </button>
       </Panel>
-      <section className="glass-card rounded-2xl border-rose-500/30 p-4 sm:p-5 lg:col-span-2">
+      <section className="glass-card rounded-2xl border-lime-300/30 p-4 sm:p-5 lg:col-span-2">
         <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
-            <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-rose-500">Danger zone</p>
+            <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-lime-300">Danger zone</p>
             <h2 className="mt-2 text-lg font-black text-white">Delete account</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
               This removes your account and signs this browser out. Owner accounts cannot delete themselves when they are the only owner.
@@ -904,14 +904,14 @@ function ScriptManagement(props: {
               <div className={`${scriptInventoryGrid} border-b border-white/5 px-3 py-2.5 text-xs transition hover:bg-white/[0.025] last:border-b-0`} key={script.id}>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <FileCode2 className="shrink-0 text-rose-500" size={15} />
+                    <FileCode2 className="shrink-0 text-lime-300" size={15} />
                     <div className="min-w-0">
                       <strong className="block truncate text-white">{script.name}</strong>
                       <span className="text-[11px] text-slate-500">{script.sourceBytes ? `${Math.ceil(script.sourceBytes / 1024)} KB protected` : "No source stored"}</span>
                     </div>
                   </div>
                 </div>
-                <code className="truncate text-[10px] text-rose-300">{script.slug}</code>
+                <code className="truncate text-[10px] text-lime-200">{script.slug}</code>
                 <strong className="text-white">{runs}</strong>
                 <Badge tone={script.active ? "good" : "bad"}>{script.active ? "Active" : "Disabled"}</Badge>
                 <div className="flex min-w-0 items-center justify-end gap-1.5">
@@ -942,21 +942,21 @@ function ScriptManagement(props: {
             setCreating(false);
           }}
         >
-          <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
+          <div className="rounded-2xl border border-lime-300/20 bg-lime-300/10 p-4 text-sm leading-6 text-lime-100">
             Upload a .lua or .luau file. AegisLua stores the source encrypted and gives you a hosted loadstring that opens a key prompt before the script can run.
           </div>
           <Field label="Script name">
             <input className={dashboardTheme.input} value={props.scriptName} onChange={(event) => props.setScriptName(event.target.value)} />
           </Field>
           <Field label="Lua or Luau file">
-            <label className="group flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-rose-400/35 bg-black/30 px-5 py-8 text-center transition hover:-translate-y-0.5 hover:border-rose-300/70 hover:bg-rose-500/10">
+            <label className="group flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-lime-300/35 bg-black/30 px-5 py-8 text-center transition hover:-translate-y-0.5 hover:border-lime-200/70 hover:bg-lime-300/10">
               <input
                 accept=".lua,.luau"
                 className="sr-only"
                 type="file"
                 onChange={(event) => readScriptFile(event.target.files?.[0])}
               />
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-rose-400/30 bg-rose-500/10 text-rose-200 transition group-hover:scale-105">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-lime-300/30 bg-lime-300/10 text-lime-100 transition group-hover:scale-105">
                 <Upload size={22} />
               </span>
               <strong className="mt-4 text-white">Choose script file</strong>
@@ -977,7 +977,7 @@ function ScriptManagement(props: {
           <div className={dashboardTheme.panelSoft}>
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Generated script ID</span>
             <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-black/40 p-3">
-              <code className="min-w-0 break-all text-sm text-rose-100">{props.scriptName.trim() ? generatedId : "Your script ID will appear here"}</code>
+              <code className="min-w-0 break-all text-sm text-lime-100">{props.scriptName.trim() ? generatedId : "Your script ID will appear here"}</code>
               <button className={dashboardTheme.ghostButton} onClick={() => props.copy(generatedId)} type="button">
                 <Copy size={15} />
               </button>
@@ -1089,7 +1089,7 @@ function KeyManagement(props: {
               <div className={`${keyInventoryGrid} border-b border-white/5 px-3 py-2.5 text-xs transition hover:bg-white/[0.025] last:border-b-0`} key={license.id}>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <KeyRound className="shrink-0 text-rose-500" size={15} />
+                    <KeyRound className="shrink-0 text-lime-300" size={15} />
                     <strong className="truncate text-white">{license.label}</strong>
                   </div>
                   <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
@@ -1098,7 +1098,7 @@ function KeyManagement(props: {
                     <span className="text-[11px] text-slate-600">{license.expiresAt ? `Expires ${new Date(license.expiresAt).toLocaleDateString()}` : "No expiry"}</span>
                   </div>
                 </div>
-                <code className="block min-w-0 truncate rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-[10px] text-rose-100">
+                <code className="block min-w-0 truncate rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-[10px] text-lime-100">
                   {visibleKey || (license.hasStoredKey ? "AEGIS-****************" : "Legacy hash only")}
                 </code>
                 <span className="truncate text-[11px] text-slate-400">{props.scriptNames(license.scriptIds) || "No scripts"}</span>
@@ -1224,7 +1224,7 @@ function AutoKeyManagement(props: {
             <div className="grid gap-4 xl:grid-cols-[1fr_auto]">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Wand2 className="text-rose-500" size={18} />
+                  <Wand2 className="text-lime-300" size={18} />
                   <strong className="text-lg text-white">{rule.name}</strong>
                   <Badge tone={rule.active ? "good" : "bad"}>{rule.active ? "Active" : "Paused"}</Badge>
                   <Badge>Every {rule.intervalCount} {rule.intervalUnit}</Badge>
@@ -1254,7 +1254,7 @@ function AutoKeyManagement(props: {
             setCreating(false);
           }}
         >
-          <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
+          <div className="rounded-2xl border border-lime-300/20 bg-lime-300/10 p-4 text-sm leading-6 text-lime-100">
             Auto key rules generate one shared short-term key on a schedule. Each generated key is saved into Key Inventory automatically, so you can disable, enable, or remove it later.
           </div>
           <Field label="Rule name"><input className={dashboardTheme.input} value={props.autoName} onChange={(event) => props.setAutoName(event.target.value)} /></Field>
@@ -1341,7 +1341,7 @@ function AdSystems(props: {
           ["4", "Share URL", "Users finish the checkpoint, return, and see their generated key once."],
         ].map(([step, title, text]) => (
           <article className="animate-rise glass-card rounded-2xl p-4 transition hover:-translate-y-1" key={step}>
-            <span className="flex size-8 items-center justify-center rounded-full bg-rose-500 text-sm font-black text-white">{step}</span>
+            <span className="flex size-8 items-center justify-center rounded-full bg-lime-300 text-sm font-black text-white">{step}</span>
             <h3 className="mt-4 font-black text-white">{title}</h3>
             <p className="mt-2 text-sm leading-6 text-slate-400">{text}</p>
           </article>
@@ -1375,7 +1375,7 @@ function AdSystems(props: {
               <div className="grid gap-4 xl:grid-cols-[1fr_auto]">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Megaphone className="text-rose-500" size={18} />
+                    <Megaphone className="text-lime-300" size={18} />
                     <strong className="text-lg text-white">{campaign.name}</strong>
                     <Badge tone={campaign.active ? "good" : "bad"}>{campaign.active ? "Active" : "Disabled"}</Badge>
                     <Badge>{providerLabel(campaign.provider)}</Badge>
@@ -1412,15 +1412,15 @@ function AdSystems(props: {
               setCreating(false);
             }}
           >
-            <div className="relative overflow-hidden rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4">
-              <div className="absolute right-4 top-4 size-20 rounded-full bg-rose-500/20 blur-2xl" />
+            <div className="relative overflow-hidden rounded-2xl border border-lime-300/25 bg-lime-300/10 p-4">
+              <div className="absolute right-4 top-4 size-20 rounded-full bg-lime-300/20 blur-2xl" />
               <div className="relative grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
                 <div>
-                  <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-rose-300">Setup wizard</p>
+                  <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-lime-200">Setup wizard</p>
                   <h3 className="mt-2 text-2xl font-black text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>
                     Build a monetized key flow
                   </h3>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-rose-100/80">
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-lime-100/80">
                     Pick a script, configure LootLabs, then AegisLua will generate a fresh expiring key for each successful claim.
                   </p>
                 </div>
@@ -1436,16 +1436,16 @@ function AdSystems(props: {
                 <button
                   className={`rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 ${
                     index === wizardStep
-                      ? "border-rose-400/45 bg-rose-500/15 shadow-lg shadow-rose-950/25"
+                      ? "border-lime-300/45 bg-lime-300/15 shadow-lg shadow-lime-950/25"
                       : index < wizardStep
-                        ? "border-rose-400/25 bg-white/[0.04]"
+                        ? "border-lime-300/25 bg-white/[0.04]"
                         : "border-white/10 bg-black/25"
                   }`}
                   key={step.title}
                   onClick={() => setWizardStep(index)}
                   type="button"
                 >
-                  <span className={`grid size-7 place-items-center rounded-full text-xs font-black ${index <= wizardStep ? "bg-rose-500 text-white" : "bg-white/10 text-white/40"}`}>
+                  <span className={`grid size-7 place-items-center rounded-full text-xs font-black ${index <= wizardStep ? "bg-lime-300 text-white" : "bg-white/10 text-white/40"}`}>
                     {index < wizardStep ? <Check size={14} /> : index + 1}
                   </span>
                   <strong className="mt-3 block text-sm text-white">{step.title}</strong>
@@ -1464,7 +1464,7 @@ function AdSystems(props: {
                     <SingleScriptSelect scripts={props.scripts} value={props.claimScriptIds[0] || ""} onChange={(scriptId) => props.setClaimScriptIds(scriptId ? [scriptId] : [])} />
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                       <div className="flex items-start gap-3">
-                        <Shield className="mt-0.5 text-rose-400" size={18} />
+                        <Shield className="mt-0.5 text-lime-300" size={18} />
                         <p className="text-sm leading-6 text-slate-400">
                           Visitors only receive a key for this script after they complete the ad checkpoint. No existing key has to be pasted here.
                         </p>
@@ -1504,7 +1504,7 @@ function AdSystems(props: {
                     </div>
                     <label className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/35 px-4 py-3 text-sm text-slate-300">
                       Discord required
-                      <input checked={props.claimDiscordRequired} className="size-5 accent-rose-500" onChange={(event) => props.setClaimDiscordRequired(event.target.checked)} type="checkbox" />
+                      <input checked={props.claimDiscordRequired} className="size-5 accent-lime-300" onChange={(event) => props.setClaimDiscordRequired(event.target.checked)} type="checkbox" />
                     </label>
                   </div>
                 ) : null}
@@ -1514,12 +1514,12 @@ function AdSystems(props: {
                     <div className="grid gap-4 sm:grid-cols-3">
                       {[1, 24, 168].map((hours) => (
                         <button
-                          className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${props.claimKeyDurationHours === hours ? "border-rose-400/45 bg-rose-500/15" : "border-white/10 bg-black/35"}`}
+                          className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${props.claimKeyDurationHours === hours ? "border-lime-300/45 bg-lime-300/15" : "border-white/10 bg-black/35"}`}
                           key={hours}
                           onClick={() => props.setClaimKeyDurationHours(hours)}
                           type="button"
                         >
-                          <Clock3 className="text-rose-400" size={18} />
+                          <Clock3 className="text-lime-300" size={18} />
                           <strong className="mt-3 block text-white">{hours === 1 ? "1 hour" : hours === 24 ? "1 day" : "1 week"}</strong>
                           <span className="mt-1 block text-xs text-slate-500">Generated key lifetime</span>
                         </button>
@@ -1530,7 +1530,7 @@ function AdSystems(props: {
                       <Field label="Claim URL lifetime"><input className={dashboardTheme.input} min={5} type="number" value={props.claimTtl} onChange={(event) => props.setClaimTtl(Number(event.target.value))} /></Field>
                       <Field label="Max claims per URL"><input className={dashboardTheme.input} min={1} type="number" value={props.claimMaxRedemptions} onChange={(event) => props.setClaimMaxRedemptions(Number(event.target.value))} /></Field>
                     </div>
-                    <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
+                    <div className="rounded-2xl border border-lime-300/20 bg-lime-300/10 p-4 text-sm leading-6 text-lime-100">
                       Each successful redemption creates a new personal key with one user slot and one device slot.
                     </div>
                   </div>
@@ -1548,7 +1548,7 @@ function AdSystems(props: {
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
                       <div className="flex items-center gap-3">
-                        <CheckCircle2 className="text-rose-400" size={20} />
+                        <CheckCircle2 className="text-lime-300" size={20} />
                         <p className="text-sm leading-6 text-slate-300">
                           Ready. Creating this system will generate your first LootLabs URL or a fallback AegisLua claim URL.
                         </p>
@@ -1559,7 +1559,7 @@ function AdSystems(props: {
               </div>
 
               <aside className="glass-card rounded-2xl p-4">
-                <p className="font-mono text-xs font-black uppercase tracking-[0.2em] text-rose-400">Live summary</p>
+                <p className="font-mono text-xs font-black uppercase tracking-[0.2em] text-lime-300">Live summary</p>
                 <div className="mt-4 grid gap-3 text-sm">
                   <div className="rounded-xl border border-white/10 bg-black/30 p-3">
                     <span className="text-slate-500">Script</span>
@@ -1624,7 +1624,7 @@ function Logs({ logs, redemptions, licenses }: { logs: AuthLog[]; redemptions: C
           {logs.map((log) => (
             <div className="grid gap-2 rounded-xl border border-white/10 bg-black/35 p-3 text-sm sm:grid-cols-[160px_80px_1fr_160px]" key={log.id}>
               <span className="text-slate-500">{new Date(log.createdAt).toLocaleString()}</span>
-              <strong className={log.ok ? "text-rose-200" : "text-zinc-500"}>{log.ok ? "Allowed" : "Denied"}</strong>
+              <strong className={log.ok ? "text-lime-100" : "text-zinc-500"}>{log.ok ? "Allowed" : "Denied"}</strong>
               <span className="truncate text-slate-300">{log.username || log.userId}</span>
               <span className="text-slate-400">{log.reason}</span>
             </div>
@@ -1652,7 +1652,7 @@ function Logs({ logs, redemptions, licenses }: { logs: AuthLog[]; redemptions: C
           {redemptions.map((redemption) => (
             <div className="grid gap-2 rounded-xl border border-white/10 bg-black/35 p-3 text-sm sm:grid-cols-[160px_80px_1fr]" key={redemption.id}>
               <span className="text-slate-500">{new Date(redemption.createdAt).toLocaleString()}</span>
-              <strong className={redemption.ok ? "text-rose-200" : "text-zinc-500"}>{redemption.ok ? "Claimed" : "Denied"}</strong>
+              <strong className={redemption.ok ? "text-lime-100" : "text-zinc-500"}>{redemption.ok ? "Claimed" : "Denied"}</strong>
               <span className="text-slate-400">{redemption.reason}</span>
             </div>
           ))}
@@ -1718,7 +1718,7 @@ function UserManagement(props: {
         <StatCard label="Disabled accounts" value={props.users.length - activeUsers} />
       </section>
       <Panel title="User Management" meta="Owner only">
-        <div className="mb-4 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100">
+        <div className="mb-4 rounded-2xl border border-lime-300/20 bg-lime-300/10 p-4 text-sm leading-6 text-lime-100">
           Your owner account can promote admins, disable accounts, and manually assign subscription plans while payment automation is still being built.
         </div>
         <ScrollArea className="max-h-[50vh] overflow-x-hidden pr-1">
@@ -1735,11 +1735,11 @@ function UserManagement(props: {
             </div>
           ) : null}
           {props.users.map((managedUser) => (
-            <article className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-3 transition hover:border-rose-500/20 hover:bg-white/[0.035]" key={managedUser.id}>
+            <article className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-3 transition hover:border-lime-300/20 hover:bg-white/[0.035]" key={managedUser.id}>
               <div className={`${ownerUserGrid} max-lg:grid-cols-1 max-lg:items-stretch`}>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Users className="shrink-0 text-rose-500" size={15} />
+                    <Users className="shrink-0 text-lime-300" size={15} />
                     <strong className="text-white">{managedUser.name}</strong>
                     {managedUser.id === props.currentUserId ? <Badge tone="good">You</Badge> : null}
                     <Badge tone={managedUser.active ? "good" : "bad"}>{managedUser.active ? "Active" : "Disabled"}</Badge>
@@ -1907,7 +1907,7 @@ function UserManagement(props: {
               <div className="grid gap-2 rounded-xl border border-white/10 bg-black/35 p-3 text-sm sm:grid-cols-[1fr_auto]" key={script.id}>
                 <div className="min-w-0">
                   <strong className="text-white">{script.name}</strong>
-                  <code className="mt-1 block truncate text-xs text-rose-300">{script.slug}</code>
+                  <code className="mt-1 block truncate text-xs text-lime-200">{script.slug}</code>
                 </div>
                 <Badge tone={script.active ? "good" : "bad"}>{script.active ? "Active" : "Disabled"}</Badge>
               </div>
@@ -1946,7 +1946,7 @@ function OwnerUserScripts({ scripts, query }: { scripts: ScriptProject[]; query:
         <div className="grid gap-2 border-b border-white/5 p-3 text-sm last:border-b-0 sm:grid-cols-[1fr_auto]" key={script.id}>
           <div className="min-w-0">
             <strong className="block truncate text-white">{script.name}</strong>
-            <code className="mt-1 block truncate text-xs text-rose-300">{script.slug}</code>
+            <code className="mt-1 block truncate text-xs text-lime-200">{script.slug}</code>
           </div>
           <Badge tone={script.active ? "good" : "bad"}>{script.active ? "Active" : "Disabled"}</Badge>
         </div>
@@ -1988,7 +1988,7 @@ function OwnerUserKeys({
               <strong className="block truncate text-white">{license.label}</strong>
               <span className="mt-1 block truncate text-xs text-slate-500">{scriptNames(license.scriptIds) || "No scripts"}</span>
             </div>
-            <code className="truncate rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs text-rose-100">
+            <code className="truncate rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs text-lime-100">
               {visibleKey || (license.hasStoredKey ? "AEGIS-****************" : "Legacy hash only")}
             </code>
             <div className="flex flex-wrap justify-end gap-2">
@@ -2068,7 +2068,7 @@ end`;
       {showAdvanced ? (
         <>
           <Panel title="Validation Endpoint" meta="POST">
-            <code className="block break-all rounded-xl bg-black/55 p-4 text-rose-100">/api/auth/validate</code>
+            <code className="block break-all rounded-xl bg-black/55 p-4 text-lime-100">/api/auth/validate</code>
           </Panel>
           <Panel title="JSON Payload">
             <pre className="scroll-surface overflow-auto rounded-xl bg-black/55 p-4 text-sm text-slate-200">{payload}</pre>
@@ -2078,8 +2078,8 @@ end`;
           </Panel>
           <Panel title="Response Rules">
             <ul className="grid gap-2 text-sm text-slate-300">
-              <li>200 with <code className="text-rose-300">ok=true</code> means the script can run.</li>
-              <li>403 with <code className="text-rose-300">invalid_license</code>, <code className="text-rose-300">device_limit_reached</code>, or <code className="text-rose-300">license_expired</code> means block execution.</li>
+              <li>200 with <code className="text-lime-200">ok=true</code> means the script can run.</li>
+              <li>403 with <code className="text-lime-200">invalid_license</code>, <code className="text-lime-200">device_limit_reached</code>, or <code className="text-lime-200">license_expired</code> means block execution.</li>
               <li>Every validation attempt is saved in Logs.</li>
             </ul>
           </Panel>
@@ -2132,19 +2132,19 @@ function loaderSnippetFor(scriptSlug: string) {
 
 function KeyBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm">
+    <div className="rounded-xl border border-lime-300/30 bg-lime-300/10 p-4 text-sm">
       <span className="text-slate-300">{label}</span>
-      <code className="mt-2 block break-all text-rose-100">{value}</code>
+      <code className="mt-2 block break-all text-lime-100">{value}</code>
     </div>
   );
 }
 
 function CopyBox({ label, value, copy, compact = false }: { label: string; value: string; copy: (value: string) => void; compact?: boolean }) {
   return (
-    <div className={`${compact ? "mt-4" : ""} rounded-xl border border-rose-400/30 bg-rose-500/10 p-4`}>
-      <span className="text-sm font-bold text-rose-100">{label}</span>
+    <div className={`${compact ? "mt-4" : ""} rounded-xl border border-lime-300/30 bg-lime-300/10 p-4`}>
+      <span className="text-sm font-bold text-lime-100">{label}</span>
       <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-        <code className="min-w-0 flex-1 break-all rounded-lg bg-black/55 p-3 text-sm text-rose-100">{value}</code>
+        <code className="min-w-0 flex-1 break-all rounded-lg bg-black/55 p-3 text-sm text-lime-100">{value}</code>
         <button className={dashboardTheme.ghostButton} onClick={() => copy(value)} type="button">Copy</button>
       </div>
     </div>
